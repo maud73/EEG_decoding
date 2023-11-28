@@ -1,3 +1,5 @@
+# To use in Google Colab : see in README.md
+
 import torch
 import mne
 import pickle
@@ -10,7 +12,7 @@ from mne.decoding import Scaler
 from mne import create_info
 
 # Load the MNE object from the .pkl file
-def load_data(file_path='data/resampled_epochs_subj_0.pkl'):
+def load_data(file_path='/content/drive/MyDrive/Colab_Notebooks/data/resampled_epochs_subj_0.pkl'): 
     with open(file_path, 'rb') as f:
         epochs = pickle.load(f)
 
@@ -18,7 +20,7 @@ def load_data(file_path='data/resampled_epochs_subj_0.pkl'):
 
 # Code from https://github.com/mne-tools/mne-torch.git
 
-def get_data(file_path='data/resampled_epochs_subj_0.pkl'):
+def get_data(file_path='/content/drive/MyDrive/Colab_Notebooks/data/resampled_epochs_subj_0.pkl'):
     # Load data
     epochs = load_data(file_path)
     # Crop the data to keep it only when the visual stimulus was on
