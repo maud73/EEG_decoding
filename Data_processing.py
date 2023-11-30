@@ -11,6 +11,9 @@ from torchvision import transforms
 from mne.decoding import Scaler
 from mne import create_info
 
+from sklearn.model_selection import train_test_split    
+
+
 # Load the MNE object from the .pkl file
 def load_data(file_path='/content/drive/MyDrive/Colab_Notebooks/data/resampled_epochs_subj_0.pkl'): 
     with open(file_path, 'rb') as f:
@@ -64,7 +67,8 @@ class EpochsDataset(Dataset):
             X = self.transform(X)
         X = torch.as_tensor(X)
         return X, y
-from sklearn.model_selection import train_test_split    
+
+
 def get_dataloaders(
     epochs,
     labels,
@@ -75,8 +79,11 @@ def get_dataloaders(
         [transforms.ToTensor() ]
     )
 
-    epochs_train, epochs_test, labels_train, labels_test = train_test_split(epochs, labels, test_size=0.3, random_state=42)
+    # Assuming 'X' is your feature set and 'y' is your target variable
+    X_temp, epochs_test, y_temp, labels_test = train_test_split(epochs, labels, test_size=0.3, random_state=42)
+    epochs_train, epochs_val, labels_train, labels_val = train_test_split(X_temp, y_temp, test_size=0.3, random_state=42)
     print(f'Dataset is split')
+
     train_set = dataset_cls(
         epochs_data = epochs_train,
         epochs_labels = labels_train,
@@ -86,20 +93,35 @@ def get_dataloaders(
         train_set,
         batch_size=batch_size,
         shuffle=True,  # Shuffle the iteration order over the dataset
-        #pin_memory=torch.cuda.is_available(),
+        pin_memory=torch.cuda.is_available(),
         #drop_last=False,
         #num_workers=2,
     )
 
+
     val_set = dataset_cls(
-        epochs_data = epochs_test,
-        epochs_labels = labels_test,
+        epochs_data = epochs_val,
+        epochs_labels = labels_val,
         transform=transform,
     )
     val_loader = torch.utils.data.DataLoader(
         val_set,
         batch_size=batch_size,
         shuffle=False,
+        pin_memory=torch.cuda.is_available(),
     )
 
-    return train_loader, val_loader
+
+    test_set = dataset_cls(
+        epochs_data = epochs_test,
+        epochs_labels = labels_test,
+        transform=transform,
+    )
+    test_loader = torch.utils.data.DataLoader(
+        test_set,
+        batch_size=batch_size,
+        shuffle=False,
+        pin_memory=torch.cuda.is_available(),
+    )
+
+    return train_loader, val_loader, test_loader
