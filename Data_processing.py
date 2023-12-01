@@ -229,9 +229,10 @@ def make_labels_grid_tensor(labels, get_alpha=False,convention_neg=False,two_cha
         alpha = make_alpha(labels_grid_tensor)
 
     if two_channels:
-        labels_grid_tensor = torch.cat((labels_grid_tensor, labels_grid_tensor), dim=1)
-        # Inverse the second channel 1 to 0 and 0 to 1
-        labels_grid_tensor[:,:,1] = 1 - labels_grid_tensor[:,:,0]
+        labels_grid_tensor_2_channels = torch.zeros((len(labels),2, 5, 5))
+        labels_grid_tensor_2_channels[:,0,:,:] = labels_grid_tensor
+        labels_grid_tensor_2_channels[:,1,:,:] = 1 - labels_grid_tensor
+        labels_grid_tensor = labels_grid_tensor_2_channels
 
     if convention_neg:
         labels_grid_tensor[labels_grid_tensor == 0] = -1
@@ -246,7 +247,7 @@ def make_alpha(labels_grid_tensor):
     alpha = np.mean(labels_grid_tensor, axis=0)
     return alpha
 
-def get_data(file_path='/content/drive/MyDrive/Colab_Notebooks/data/resampled_epochs_subj_0.pkl', convention_neg=False, two_channels=False):
+def get_data(file_path='/content/drive/MyDrive/Colab_Notebooks/data/resampled_epochs_subj_0.pkl', get_alpha=False, convention_neg=False, two_channels=False):
     # Load data
     epochs = load_data(file_path)
     # Crop the data to keep it only when the visual stimulus was on
@@ -255,14 +256,20 @@ def get_data(file_path='/content/drive/MyDrive/Colab_Notebooks/data/resampled_ep
     epochs.crop(tmin=tmin, tmax=tmax)
     labels = epochs.events[:, 2] 
     # Convert the labels to a grid tensor
-    labels = make_labels_grid_tensor(labels, convention_neg, two_channels)
+    if get_alpha:
+        labels, alpha = make_labels_grid_tensor(labels,get_alpha, convention_neg, two_channels)
+    else:
+        labels = make_labels_grid_tensor(labels,get_alpha, convention_neg, two_channels)
     # Normalize data using mne library
     info = create_info(ch_names=epochs.ch_names, sfreq=epochs.info['sfreq'], ch_types='eeg') 
     scaler = Scaler(info=info, scalings=None, with_mean=True, with_std=True)
     scaler.fit(epochs.get_data())
     epochs = scaler.transform(epochs.get_data())
     
-    return epochs, labels
+    if get_alpha:
+        return epochs, labels, alpha
+    else:
+        return epochs, labels
 
 class EpochsDataset(Dataset):
     """Class to expose an MNE Epochs object as PyTorch dataset
