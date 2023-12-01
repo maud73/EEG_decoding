@@ -212,7 +212,7 @@ def convert_from_id_to_grid(id):
         grid[0:5, 2] = 1
         return grid
 
-def make_labels_grid_tensor(labels, convention_neg=False,two_channels=False):
+def make_labels_grid_tensor(labels, get_alpha=False,convention_neg=False,two_channels=False):
     '''
     Args:
         labels: np.array, The labels of the stimuli
@@ -225,6 +225,9 @@ def make_labels_grid_tensor(labels, convention_neg=False,two_channels=False):
     for i in range(len(labels)):
         labels_grid_tensor[i] = torch.tensor(convert_from_id_to_grid(labels[i]))
 
+    if get_alpha:
+        alpha = make_alpha(labels_grid_tensor)
+
     if two_channels:
         labels_grid_tensor = torch.cat((labels_grid_tensor, labels_grid_tensor), dim=1)
         # Inverse the second channel 1 to 0 and 0 to 1
@@ -232,7 +235,16 @@ def make_labels_grid_tensor(labels, convention_neg=False,two_channels=False):
 
     if convention_neg:
         labels_grid_tensor[labels_grid_tensor == 0] = -1
-    return labels_grid_tensor
+    
+    if get_alpha:
+        return labels_grid_tensor, alpha
+
+    else:
+        return labels_grid_tensor
+    
+def make_alpha(labels_grid_tensor):
+    alpha = np.mean(labels_grid_tensor, axis=0)
+    return alpha
 
 def get_data(file_path='/content/drive/MyDrive/Colab_Notebooks/data/resampled_epochs_subj_0.pkl', convention_neg=False, two_channels=False):
     # Load data
