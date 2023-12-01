@@ -15,3 +15,4 @@ To use in Google Colab :
     file_path = '/content/drive/MyDrive/Colab_Notebooks/data/resampled_epochs_subj_0.pkl' #Select the folder where data is
 
     epochs, labels = get_data(file_path)
+    train_loader, val_loader, test_loader = get_dataloaders(epochs, labels, batch_size=10)
