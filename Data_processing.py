@@ -338,7 +338,7 @@ def get_dataloaders(
     )
     val_loader = torch.utils.data.DataLoader(
         val_set,
-        batch_size=batch_size,
+        batch_size=1,
         shuffle=False,
         pin_memory=torch.cuda.is_available(),
     )
@@ -351,7 +351,7 @@ def get_dataloaders(
     )
     test_loader = torch.utils.data.DataLoader(
         test_set,
-        batch_size=batch_size,
+        batch_size=1,
         shuffle=False,
         pin_memory=torch.cuda.is_available(),
     )
