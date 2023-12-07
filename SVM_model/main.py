@@ -1,3 +1,5 @@
+#SBATCH --qos=cs433
+
 from SVM_model.SVM import *
 
 def main() :
