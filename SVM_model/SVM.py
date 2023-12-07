@@ -8,7 +8,7 @@ from Data_preprocessing.Data_processing import get_dataloaders, get_data
 # ===== Parameters =====
 #for the SVM pixel
 num_epochs = 100
-batch_size_trainning = 100 #batch_size trainning and validating is 1
+batch_size = 100 #batch_size training and validating is 1
 
 #optimizer: Adam
 lr=0.001
@@ -217,7 +217,7 @@ def train(full_model,
           train_loader,eval_loader
           ) :
 
-  to_store = pd.DataFrame(columns=['Pixel n°', 'Trainning loss','Learning rate history', 'Trainning accuracy', 'Validating accuracy'])
+  to_store = pd.DataFrame(columns=['Pixel n°', 'Training loss','Learning rate history', 'Training accuracy', 'Validating accuracy'])
 
   for i, model in enumerate(full_model.models):
     print('Pixel ', i )
@@ -335,7 +335,7 @@ def resize_batch(batch_x, batch_y, num_pixel):
   return batch_x, batch_y
 
 #saving functions
-def save_trial(df_trainning, df_testing, param, path_to_save):
+def save_trial(df_training, df_testing, param, path_to_save):
 
   #add the parameters column
   df_param = pd.DataFrame.from_dict(param, orient='index')
@@ -347,16 +347,16 @@ def save_trial(df_trainning, df_testing, param, path_to_save):
 
   df_param.to_csv(path + '/parameters.csv')
   df_testing.to_csv(path + '/testing.cvs')
-  df_trainning.to_csv(path + '/training.cvs')
+  df_training.to_csv(path + '/training.cvs')
 
   print('trials saved in /trials directory')
 
 
 #plotting function
 def plot_training(Training_results, num_epochs, path_to_save) :
-  #columns=['Pixel n°', 'Trainning loss', 'Trainning accuracy','Learning rate history', 'Validating accuracy']
+  #columns=['Pixel n°', 'Training loss', 'Training accuracy','Learning rate history', 'Validating accuracy']
 
-  #plot the 25 trainning loss and accuracy over the epochs in a subplot + one point for the best accuracy
+  #plot the 25 training loss and accuracy over the epochs in a subplot + one point for the best accuracy
   fig1, axs1 = plt.subplots(5, 5, figsize=(30,30))
   fig1.suptitle('Training loss', fontsize=40)
   fig2, axs2 = plt.subplots(5, 5, figsize=(30,30))
@@ -380,10 +380,10 @@ def plot_training(Training_results, num_epochs, path_to_save) :
     if i >=20 and i < 25:
       m = 4
 
-    #'Trainning_loss'
+    #'Training_loss'
     axs1[n,m].plot(x, pixel[1])
 
-    # 'Trainning_accuracy'
+    # 'Training_accuracy'
     axs2[n,m].plot(x, pixel[2])
     axs2[n,m].hlines(pixel[4],0,num_epochs ,color='k',  label='validation accuracy')
 
