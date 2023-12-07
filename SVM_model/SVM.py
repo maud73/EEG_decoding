@@ -346,8 +346,8 @@ def save_trial(df_training, df_testing, param, path_to_save):
   os.makedirs(path, exist_ok=True)
 
   df_param.to_csv(path + '/parameters.csv')
-  df_testing.to_csv(path + '/testing.cvs')
-  df_training.to_csv(path + '/training.cvs')
+  df_testing.to_csv(path + '/testing.csv')
+  df_training.to_csv(path + '/training.csv')
 
   print('trials saved in /trials directory')
 
