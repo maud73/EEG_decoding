@@ -140,11 +140,11 @@ def train_single_model(model,
 
       #save the loss, accuracy and lr
       loss_per_epoch.append(running_loss / len(train_loader.dataset))
-      acc_per_epoch.append(running_corrects*100 / len(train_loader.dataset))
+      acc_per_epoch.append(running_corrects / len(train_loader.dataset))
       lr_history.append(scheduler.get_last_lr()[0])
 
       if epoch%100 ==0 : #plot info only every 100 epochs
-        print(f'Epoch: {epoch}', 'Loss: {:.4f}'.format(running_loss / len(train_loader.dataset)), 'Acc: {:.4f}'.format(running_corrects*100/ len(train_loader.dataset)))
+        print(f'Epoch: {epoch}', 'Loss: {:.4f}'.format(running_loss / len(train_loader.dataset)), 'Acc: {:.4f}'.format(running_corrects/ len(train_loader.dataset)))
 
     return loss_per_epoch, acc_per_epoch, lr_history
 
@@ -195,8 +195,8 @@ def eval_single_model(model,
           loss += model.reg_term * torch.sum(weight * weight)
 
     # Collect statistics
-    running_loss += loss.item() * batch_x.size(0)  # images.size(0) is batch size.
-    running_corrects += torch.sum(preds == batch_y.data)
+      running_loss += loss.item() * batch_x.size(0)  # images.size(0) is batch size.
+      running_corrects += torch.sum(preds == batch_y.data)
 
     epoch_loss = running_loss / len(val_loader.dataset)
     epoch_acc = running_corrects/ len(val_loader.dataset)
@@ -205,12 +205,12 @@ def eval_single_model(model,
       best_acc = epoch_acc
       best_model_wts = copy.deepcopy(model.state_dict())
 
-  print('Best val Acc in percentage: {:.4f}'.format(best_acc*100))
+  print('Best val Acc in percentage: {:.4f}'.format(best_acc))
 
   # Load best model weights
   model.load_state_dict(best_model_wts)
 
-  return best_acc*100
+  return best_acc
 
 
 def train(full_model,
