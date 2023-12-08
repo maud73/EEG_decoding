@@ -1,4 +1,4 @@
-from SVM_model.SVM import *
+from SVM import *
 
 def main() :
   param = {'num_epochs': num_epochs,
