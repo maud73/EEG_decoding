@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import copy
 import pandas as pd
-from Data_preprocessing.Data_processing import get_dataloaders, get_data
 
 # ===== Parameters =====
 #for the SVM pixel
@@ -85,7 +84,7 @@ class SVM(torch.nn.Module):
 
 def train_single_model(model,
                        train_loader,
-                       num_pixel, device):
+                       num_pixel):
 
     #crit, optim and scheduler
     criterion =  torch.nn.MultiLabelSoftMarginLoss() #torch.nn.SoftMarginLoss()
@@ -108,10 +107,6 @@ def train_single_model(model,
 
       for batch_x, batch_y in train_loader:
         batch_x, batch_y = resize_batch(batch_x, batch_y,  num_pixel)
-
-        #running on gpu
-        batch_x = batch_x.to(device)
-        batch_y = batch_y.to(device)
 
         outputs = model(batch_x)
 
@@ -150,7 +145,7 @@ def train_single_model(model,
 
 def eval_single_model(model,
                        val_loader,
-                       num_pixel, device):
+                       num_pixel):
 
 
   criterion = torch.nn.SoftMarginLoss()
@@ -176,10 +171,6 @@ def eval_single_model(model,
 
     for batch_x, batch_y in val_loader:
       batch_x, batch_y = resize_batch(batch_x, batch_y,  num_pixel)
-
-      #running on gpu
-      batch_x = batch_x.to(device)
-      batch_y = batch_y.to(device)
 
       outputs = model(batch_x)
       preds = model.predict_label(outputs)
@@ -235,17 +226,13 @@ def train(full_model,
 # ================ TEST FUNCTIONS ================
 
 #test functions
-def test_single_model(model, test_loader, num_pixel, device) :
+def test_single_model(model, test_loader, num_pixel) :
   ''' give the prediction of a single pixel'''
 
   with torch.no_grad():
     for batch_x, batch_y in test_loader:
 
         batch_x, batch_y = resize_batch(batch_x, batch_y, num_pixel)
-
-        #running on gpu
-        batch_x = batch_x.to(device)
-        batch_y = batch_y.to(device)
 
         outputs = model(batch_x)
 
@@ -264,7 +251,7 @@ def test_single_model(model, test_loader, num_pixel, device) :
 
 
 
-def test(trained_model, test_loader,device) :
+def test(trained_model, test_loader) :
 
   to_store = pd.DataFrame(columns=['Testing singles F1', 'Testing singles accuracy', 'Testing full F1', 'Testing full acc'])
 
@@ -273,7 +260,7 @@ def test(trained_model, test_loader,device) :
   acc_single = []
 
   for i, model in enumerate(trained_model.models) :
-    f1, acc = test_single_model(model, test_loader, i, device)
+    f1, acc = test_single_model(model, test_loader, i)
     f1_single.append(f1)
     acc_single.append(acc)
 
@@ -284,10 +271,6 @@ def test(trained_model, test_loader,device) :
     for batch_x, batch_y in test_loader: #size = 1
         batch_x = batch_x.flatten(2)
         batch_y = batch_y.flatten(1)
-
-        #running on gpu
-        batch_x = batch_x.to(device)
-        batch_y = batch_y.to(device)
 
         outputs = trained_model(batch_x)
 

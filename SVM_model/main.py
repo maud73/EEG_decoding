@@ -1,4 +1,5 @@
 from SVM import *
+from Data_processing import get_dataloaders, get_data
 
 def main() :
   param = {'num_epochs': num_epochs,
@@ -21,19 +22,15 @@ def main() :
 
   input_size = train_loader.dataset[:][0].shape[2]*train_loader.dataset[:][0].shape[0]
 
-  #===== Device =====
-  device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
   # ===== Model =====
   #build a model
   model = SVM(input_size, num_classes = 60, pixel_nb = 25)
-  model.to(device)
 
   #Train and validate the model
-  Training_results = train(model,train_loader,val_loader, device) #columns=['Pixel n°', 'Training loss','Learning rate history', 'Training accuracy', 'Validating accuracy']
+  Training_results = train(model,train_loader,val_loader) #columns=['Pixel n°', 'Training loss','Learning rate history', 'Training accuracy', 'Validating accuracy']
 
   #Test the model
-  Testing_results = test(model, test_loader, device) #columns=['Testing singles F1', 'Testing singles accuracy', 'Testing full F1', 'Testing full acc']
+  Testing_results = test(model, test_loader) #columns=['Testing singles F1', 'Testing singles accuracy', 'Testing full F1', 'Testing full acc']
 
   # ===== Saving and Plots =====
   #save
