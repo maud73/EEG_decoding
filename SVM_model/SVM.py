@@ -7,7 +7,7 @@ import pandas as pd
 # ===== Parameters =====
 #for the SVM pixel
 num_epochs = 100
-batch_size = 100 #batch_size training and validating is 1
+batch_size = 10 #batch_size training and validating is 1
 
 #optimizer: Adam
 lr=0.001
@@ -251,7 +251,7 @@ def test_single_model(model, test_loader, num_pixel) :
 
 
 
-def test(trained_model, test_loader) :
+def test(trained_model, test_loader, outpath) :
 
   to_store = pd.DataFrame(columns=['Testing singles F1', 'Testing singles accuracy', 'Testing full F1', 'Testing full acc'])
 
@@ -277,6 +277,8 @@ def test(trained_model, test_loader) :
         pred_pattern = trained_model.predict_pattern(outputs)
 
         F1, accuracy = F1andscore(batch_y, pred_pattern)
+
+  save_prediction(batch_y, pred_pattern, outpath) #save only the last batch as an example
 
   to_store['Testing full F1'] = F1
   to_store['Testing full acc'] = accuracy
@@ -437,6 +439,37 @@ def plot_testing(Testing_results, path_to_save):
   fig2.savefig(os.path.join(outpath,"Testing_accuracy.png"))
 
   print('saving done in /trials/plots directory')
+
+def save_prediction(true_patterns, pred_patterns, outpath) :
+  #import matplotlib.backends.backend_pdf
+  import os
+
+  outpath = outpath + '/testing_pattern_example'
+  os.makedirs(outpath, exist_ok=True)
+  #pdf = matplotlib.backends.backend_pdf.PdfPages(os.path.join(outpath,"testing_pattern.pdf"))
+  i = 0
+  for true_pattern, pred_pattern in zip(true_patterns, pred_patterns) :
+    fig, ax = plot_pattern([true_pattern, pred_pattern])
+    i+= 1
+    filname = f'Pred_vs_true_n°{i}.png'
+    fig.savefig(os.path.join(outpath, filname))
+
+  print('saving pattern into trials/testing_patterns_example')
+
+def plot_pattern(patterns) :
+  from matplotlib.colors import LogNorm
+  fig, ax = plt.subplots(1, 2, figsize=(2*3,3))
+
+  for i, pattern in enumerate(patterns) :
+    Z = pattern.numpy().reshape([5,5])
+    c = ax[i].pcolor(Z, cmap='binary')
+
+  ax[0].set_title('true pattern')
+  ax[1].set_title('predict pattern')
+
+  #fig.text(.5, .005, 'F1 score for this pattern = {:.4f}'.format(f1), ha='center')
+
+  return fig, ax
 
 def heatmap(data, row_labels, col_labels, ax=None,
             cbar_kw=None, cbarlabel="", **kwargs):
