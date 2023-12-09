@@ -369,7 +369,7 @@ def plot_training(Training_results, num_epochs, path_to_save) :
     axs1[n,m].plot(x, pixel[1])
 
     # 'Training_accuracy'
-    axs2[n,m].plot(x, pixel[2])
+    axs2[n,m].plot(x, pixel[3])
     axs2[n,m].hlines(pixel[4],0,num_epochs ,color='k',  label='validation accuracy')
 
 

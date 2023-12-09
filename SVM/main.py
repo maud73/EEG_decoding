@@ -1,5 +1,5 @@
 from SVM import *
-from Data_processing import get_dataloaders, get_data
+from Data_preprocessing.Data_processing import get_dataloaders, get_data
 
 def main() :
   param = {'num_epochs': num_epochs,
@@ -16,7 +16,7 @@ def main() :
   # ===== Data =====
   #file_path = 'drive/MyDrive/Project2/resampled_epochs_subj_0.pkl' #for the drive
   file_path = '/EEG_DECODING/data/resampled_epochs_subj_0.pkl'
-  path_to_save = '/EEG_DECODING/SVM_model/trials'
+  path_to_save = '/EEG_DECODING/SVM/trials'
 
   epochs, labels = get_data(file_path, convention_neg=True, two_channels=False)
   train_loader, val_loader, test_loader = get_dataloaders(epochs, labels, batch_size=batch_size)
