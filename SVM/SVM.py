@@ -441,7 +441,7 @@ def plot_testing(Testing_results, path_to_save):
   print('saving done in /trials/plots directory')
 
 def save_prediction(true_patterns, pred_patterns, outpath) :
-  #import matplotlib.backends.backend_pdf
+  import matplotlib.backends.backend_pdf
   import os
 
   outpath = outpath + '/testing_pattern_example'
@@ -449,9 +449,10 @@ def save_prediction(true_patterns, pred_patterns, outpath) :
   #pdf = matplotlib.backends.backend_pdf.PdfPages(os.path.join(outpath,"testing_pattern.pdf"))
   i = 0
   for true_pattern, pred_pattern in zip(true_patterns, pred_patterns) :
+
     fig, ax = plot_pattern([true_pattern, pred_pattern])
     i+= 1
-    filname = f'Pred_vs_true_n°{i}.png'
+    filname = f'Pred_vs_true_n°{i}'
     fig.savefig(os.path.join(outpath, filname))
 
   print('saving pattern into trials/testing_patterns_example')

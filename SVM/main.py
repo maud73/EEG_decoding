@@ -1,4 +1,4 @@
-from SVM_model.SVM import *
+from SVM import *
 from Data_processing import get_dataloaders, get_data
 
 def main() :
