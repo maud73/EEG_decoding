@@ -166,3 +166,6 @@ mne-torch/
 *.csv
 *.xlsx
 draft/
+*.png
+*.zip
+test_*
