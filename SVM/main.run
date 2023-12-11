@@ -12,9 +12,4 @@
 #SBATCH -q cs433
 #SBATCH --output results_main_SMV.out
 
-module purge
-
-module load gcc cuda/11.2.2 cudnn/8.1.1.33-11.2-linux-x64
-source $HOME/venvs/EGG_env/bin/activate
-
 srun python main.py 3
