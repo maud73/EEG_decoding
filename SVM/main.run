@@ -1,0 +1,22 @@
+#!/bin/bash -l
+
+#SBATCH --job-name=main 
+#SBATCH --account=master
+#SBATCH --nodes=1 
+#SBATCH --partition=gpu
+#SBATCH --qos=gpu
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=1 
+#SBATCH --gres=gpu:1
+#SBATCH --time=3-0 
+#SBATCH --mem 64Go
+#SBATCH --output results_main_SMV.out
+
+module purge
+
+module load gcc cuda/11.2.2 cudnn/8.1.1.33-11.2-linux-x64
+source $HOME/venvs/EGG_env/bin/activate
+
+srun python main.py 3
+
+\n
