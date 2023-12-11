@@ -17,7 +17,7 @@ def main() :
   path_to_save = 'SVM/trials'
 
   epochs, labels = get_data(file_path, convention_neg=True, two_channels=False)
-  train_loader, val_loader, test_loader = get_dataloaders(epochs[:100], labels[:100], batch_size=batch_size)
+  train_loader, val_loader, test_loader = get_dataloaders(epochs, labels, batch_size=batch_size)
   
   #find the ratio that caracterize the balancy between the class 
   item, weight_loss = balance_weight(labels)
