@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import copy
 import pandas as pd
+#from xgboost import XGBClassifier
 
 # ===== Parameters =====
 #for the SVM pixel
@@ -47,18 +48,17 @@ class SVM_pixel(torch.nn.Module) :
     preds[mask]= -1
     return preds
   
-
 class SVM(torch.nn.Module):
   """
   SVM, support machine model for 5x5 image classification.
   """
-  def __init__(self,  input_size, num_classes = 60, pixel_nb = 25):
+  def __init__(self, device,  input_size, num_classes = 60, pixel_nb = 25):
     super(SVM, self).__init__()
     self.models = []
 
     for i in range(pixel_nb) :
       model = SVM_pixel(input_size) #inputsize = 192*128 = nb of feature
-
+      model = model.to(device)
       self.models.append(model)
 
   def forward(self, x):
@@ -79,12 +79,15 @@ class SVM(torch.nn.Module):
 
     return preds.reshape([outputs.shape[0], outputs.shape[1]]) #size batch_size, nb of pixel
 
+#xgboost Models
 
 # ================ TRAIN FUNCTIONS ================
 
 def train_single_model(model,
                        train_loader,
-                       num_pixel):
+                       num_pixel,
+                       device,
+                       weight_loss):
 
     #crit, optim and scheduler
     criterion =  torch.nn.MultiLabelSoftMarginLoss() #torch.nn.SoftMarginLoss()
@@ -108,6 +111,10 @@ def train_single_model(model,
       for batch_x, batch_y in train_loader:
         batch_x, batch_y = resize_batch(batch_x, batch_y,  num_pixel)
 
+        #running on gpu
+        batch_x = batch_x.to(device)
+        batch_y = batch_y.to(device)
+
         outputs = model(batch_x)
 
         preds = model.predict_label(outputs)
@@ -128,8 +135,8 @@ def train_single_model(model,
         loss.backward()
         optimizer.step()
 
-        running_loss += loss.item() * batch_x.size(0)
-        running_corrects += torch.sum(preds == batch_y.data)
+        running_loss += loss.cpu().item() * batch_x.size(0)
+        running_corrects += torch.sum(preds == batch_y.data).cpu()
 
       scheduler.step()
 
@@ -145,19 +152,16 @@ def train_single_model(model,
 
 def eval_single_model(model,
                        val_loader,
-                       num_pixel):
+                       num_pixel,
+                       device,
+                      weight_loss):
 
-
-  criterion = torch.nn.SoftMarginLoss()
+  criterion = torch.nn.MultiLabelSoftMarginLoss()
   optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
-  scheduler= torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
-
+ 
   #regularization parameters
   reg_type = model.reg_type
   reg_term = model.reg_term
-
-  loss_per_epoch = []
-  acc_per_epoch = []
 
   #init
   best_acc = 0
@@ -171,7 +175,11 @@ def eval_single_model(model,
 
     for batch_x, batch_y in val_loader:
       batch_x, batch_y = resize_batch(batch_x, batch_y,  num_pixel)
-
+      
+      #running on gpu
+      batch_x = batch_x.to(device)
+      batch_y = batch_y.to(device)
+      
       outputs = model(batch_x)
       preds = model.predict_label(outputs)
       loss = criterion(outputs, batch_y)
@@ -186,8 +194,8 @@ def eval_single_model(model,
           loss += model.reg_term * torch.sum(weight * weight)
 
     # Collect statistics
-      running_loss += loss.item() * batch_x.size(0)  # images.size(0) is batch size.
-      running_corrects += torch.sum(preds == batch_y.data)
+      running_loss += loss.cpu().item() * batch_x.size(0)  # images.size(0) is batch size.
+      running_corrects += torch.sum(preds == batch_y.data).cpu()
 
     epoch_loss = running_loss / len(val_loader.dataset)
     epoch_acc = running_corrects/ len(val_loader.dataset)
@@ -203,18 +211,22 @@ def eval_single_model(model,
 
   return best_acc
 
-
 def train(full_model,
-          train_loader,eval_loader
+          train_loader,
+          eval_loader,
+          device, 
+          weight_loss
           ) :
 
   to_store = pd.DataFrame(columns=['Pixel n°', 'Training loss','Learning rate history', 'Training accuracy', 'Validating accuracy'])
 
   for i, model in enumerate(full_model.models):
     print('Pixel ', i )
-    loss_per_epoch, acc_per_epoch, lr_history = train_single_model(model,train_loader, i)
+    weight = weight_loss[i].to(device)
 
-    best_acc = eval_single_model(model, eval_loader, i)
+    loss_per_epoch, acc_per_epoch, lr_history = train_single_model(model,train_loader, i, device, weight)
+
+    best_acc = eval_single_model(model, eval_loader, i, device, weight)
 
     df = pd.DataFrame([[i, loss_per_epoch, acc_per_epoch,lr_history, best_acc]])
 
@@ -226,13 +238,17 @@ def train(full_model,
 # ================ TEST FUNCTIONS ================
 
 #test functions
-def test_single_model(model, test_loader, num_pixel) :
+def test_single_model(model, test_loader, num_pixel, device) :
   ''' give the prediction of a single pixel'''
 
   with torch.no_grad():
     for batch_x, batch_y in test_loader:
 
         batch_x, batch_y = resize_batch(batch_x, batch_y, num_pixel)
+
+        #running on gpu
+        batch_x = batch_x.to(device)
+        batch_y = batch_y.to(device)
 
         outputs = model(batch_x)
 
@@ -246,12 +262,10 @@ def test_single_model(model, test_loader, num_pixel) :
           preds = torch.concatenate((preds,pred))
         else : preds = pred
 
-    f1, acc = F1andscore(Y, preds)
+    f1, acc = F1andscore(Y.cpu(), preds.cpu())
   return f1, acc
 
-
-
-def test(trained_model, test_loader, outpath) :
+def test(trained_model, test_loader, outpath, device) :
 
   to_store = pd.DataFrame(columns=['Testing singles F1', 'Testing singles accuracy', 'Testing full F1', 'Testing full acc'])
 
@@ -260,7 +274,7 @@ def test(trained_model, test_loader, outpath) :
   acc_single = []
 
   for i, model in enumerate(trained_model.models) :
-    f1, acc = test_single_model(model, test_loader, i)
+    f1, acc = test_single_model(model, test_loader, i, device)
     f1_single.append(f1)
     acc_single.append(acc)
 
@@ -271,38 +285,47 @@ def test(trained_model, test_loader, outpath) :
     for batch_x, batch_y in test_loader: #size = 1
         batch_x = batch_x.flatten(2)
         batch_y = batch_y.flatten(1)
+        
+        #running on gpu
+        batch_x = batch_x.to(device)
+        batch_y = batch_y.to(device)
 
         outputs = trained_model(batch_x)
 
         pred_pattern = trained_model.predict_pattern(outputs)
 
-        F1, accuracy = F1andscore(batch_y, pred_pattern)
+        F1, accuracy = F1andscore(batch_y.cpu(), pred_pattern.cpu())
 
-  save_prediction(batch_y, pred_pattern, outpath) #save only the last batch as an example
+  save_prediction(batch_y.cpu(), pred_pattern.cpu(), outpath) #save only the last batch as an example
 
   to_store['Testing full F1'] = F1
   to_store['Testing full acc'] = accuracy
 
   return to_store
 
-
 # ================ ADDITIONNAL FUNCTIONS ================
+#score fonctions
+def F1andscore(true, pred, label = '-11'):
+  
+  if label == '-11' : 
+    l1 = 1
+    l0 = -1
+  elif label == '01' : 
+    l1 = 1
+    l0 = 0
 
-#resize function for the batches -> to incorporate to the data processing
-def F1andscore(true, pred):
-  TP = torch.sum((true == 1) & (pred == 1)) #true positive: if pred =1 both
-  FP = torch.sum((true == -1) & (pred == 1)) #false positive: if pred = 1 and pat = -1
-  FN = torch.sum((true == 1) & (pred == -1)) #False negative : if -1 in both
-  TN = torch.sum((true == -1) & (pred == -1))
+  TP = torch.sum((true == l1) & (pred == l1)) #true positive: if pred =1 both
+  FP = torch.sum((true == l0) & (pred == l1)) #false positive: if pred = 1 and pat = -1
+  FN = torch.sum((true == l1) & (pred == l0)) #False negative : if -1 in both
+  TN = torch.sum((true == l0) & (pred == l0))
 
-  # Calculate precision and recall
+  #Calculate precision and recall
   precision = TP / (TP + FP)
   recall = TP / (TP + FN)
 
   return 2 * (precision * recall) / (precision + recall), (TP + TN)/(TP+TN+FP+FN)
 
-
-#resize function for the batches -> to incorporate to the data processing
+#resize function for the batches 
 def resize_batch(batch_x, batch_y, num_pixel):
   #reshape x_batch
   batch_x= batch_x.flatten(2)
@@ -318,6 +341,19 @@ def resize_batch(batch_x, batch_y, num_pixel):
   batch_y = batch_y.reshape(batch_y.shape[0], 1)
 
   return batch_x, batch_y
+
+def balance_weight(labels) :
+  #finding the right weight
+  labs = labels.flatten(1)
+
+  alphas = []
+  for i in range (labs.shape[1]) :
+    lab = labs[:,i]
+    item, count = torch.unique(lab, return_counts=True)
+    alpha = count/lab.shape[0]
+    alphas.append(alpha)
+
+  return item, alphas
 
 #saving functions
 def save_trial(df_training, df_testing, param, path_to_save):
@@ -336,8 +372,7 @@ def save_trial(df_training, df_testing, param, path_to_save):
 
   print('trials saved in /trials directory')
 
-
-#plotting function
+#plotting and save functions
 def plot_training(Training_results, num_epochs, path_to_save) :
   #columns=['Pixel n°', 'Training loss', 'Training accuracy','Learning rate history', 'Validating accuracy']
 
@@ -441,12 +476,10 @@ def plot_testing(Testing_results, path_to_save):
   print('saving done in /trials/plots directory')
 
 def save_prediction(true_patterns, pred_patterns, outpath) :
-  import matplotlib.backends.backend_pdf
   import os
 
   outpath = outpath + '/testing_pattern_example'
   os.makedirs(outpath, exist_ok=True)
-  #pdf = matplotlib.backends.backend_pdf.PdfPages(os.path.join(outpath,"testing_pattern.pdf"))
   i = 0
   for true_pattern, pred_pattern in zip(true_patterns, pred_patterns) :
 
@@ -467,8 +500,6 @@ def plot_pattern(patterns) :
 
   ax[0].set_title('true pattern')
   ax[1].set_title('predict pattern')
-
-  #fig.text(.5, .005, 'F1 score for this pattern = {:.4f}'.format(f1), ha='center')
 
   return fig, ax
 
@@ -530,7 +561,6 @@ def heatmap(data, row_labels, col_labels, ax=None,
     ax.tick_params(which="minor", bottom=False, left=False)
 
     return im, cbar
-
 
 def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
                      textcolors=("black", "white"),
