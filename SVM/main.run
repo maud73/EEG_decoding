@@ -18,5 +18,3 @@ module load gcc cuda/11.2.2 cudnn/8.1.1.33-11.2-linux-x64
 source $HOME/venvs/EGG_env/bin/activate
 
 srun python main.py 3
-
-\n
