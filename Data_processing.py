@@ -304,7 +304,7 @@ class EpochsDataset(Dataset):
 def get_dataloaders(
     epochs,
     labels,
-    batch_size):
+    batch_size,num_workers=2):
     dataset_cls = EpochsDataset
 
     transform = transforms.Compose(
@@ -327,7 +327,7 @@ def get_dataloaders(
         shuffle=True,  # Shuffle the iteration order over the dataset
         pin_memory=torch.cuda.is_available(),
         #drop_last=False,
-        #num_workers=2,
+        num_workers=num_workers,
     )
 
 
@@ -335,12 +335,14 @@ def get_dataloaders(
         epochs_data = epochs_val,
         epochs_labels = labels_val,
         transform=transform,
+        
     )
     val_loader = torch.utils.data.DataLoader(
         val_set,
         batch_size=1,
         shuffle=False,
         pin_memory=torch.cuda.is_available(),
+        num_workers=num_workers
     )
 
 
@@ -354,6 +356,7 @@ def get_dataloaders(
         batch_size=1,
         shuffle=False,
         pin_memory=torch.cuda.is_available(),
+        num_workers=num_workers
     )
 
     return train_loader, val_loader, test_loader
