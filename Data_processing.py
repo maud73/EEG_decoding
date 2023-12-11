@@ -247,7 +247,7 @@ def make_alpha(labels_grid_tensor):
     alpha = np.mean(labels_grid_tensor, axis=0)
     return alpha
 
-def get_data(file_path='/content/drive/MyDrive/Colab_Notebooks/data/resampled_epochs_subj_0.pkl', get_alpha=False, convention_neg=False, two_channels=False):
+def get_data(file_path='/content/drive/MyDrive/Colab_Notebooks/data/resampled_epochs_subj_0_corrected.pkl', get_alpha=False, convention_neg=False, two_channels=False):
     # Load data
     epochs = load_data(file_path)
     # Crop the data to keep it only when the visual stimulus was on
@@ -262,7 +262,7 @@ def get_data(file_path='/content/drive/MyDrive/Colab_Notebooks/data/resampled_ep
         labels = make_labels_grid_tensor(labels,get_alpha, convention_neg, two_channels)
     # Normalize data using mne library
     info = create_info(ch_names=epochs.ch_names, sfreq=epochs.info['sfreq'], ch_types='eeg') 
-    scaler = Scaler(info=info, scalings=None, with_mean=True, with_std=True)
+    scaler = Scaler(info=info, scalings='mean', with_mean=True, with_std=True)
     scaler.fit(epochs.get_data())
     epochs = scaler.transform(epochs.get_data())
     
