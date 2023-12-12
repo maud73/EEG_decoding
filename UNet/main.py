@@ -124,3 +124,6 @@ def main():
         file_path = f'UNet/Plots/Tests/{filename}.png'
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         test(best_model=model, test_loader=test_loader, file_path=file_path)
+
+if __name__ == 'main':
+        main()
