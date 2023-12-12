@@ -7,7 +7,7 @@ import pandas as pd
 
 # ===== Parameters =====
 #for the SVM pixel
-num_epochs = 150
+num_epochs = 250
 batch_size = 50 #batch_size training and validating is 1
 
 #optimizer: Adam
