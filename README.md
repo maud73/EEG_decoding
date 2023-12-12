@@ -10,6 +10,7 @@ library used :
 - pandas
 - xgboost import XGBClassifier
 - os
+- optuna
 
 SVM.py contains:
 **class**
