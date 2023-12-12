@@ -6,10 +6,10 @@ from torch.autograd import Variable
 
 def label_weights(target):
     N = target.shape[0]*25
-    weight_majority = N / torch.sum(target == 0)
-    weight_minority = N / torch.sum(target == 1)
-    weights = torch.where(target==0, weight_majority, weight_minority)
+    freq_min = torch.sum(target == 1) / N
+    weights = torch.where(target==0, freq_min.float(), (1-freq_min).float())
     return weights
+
 
 # Code edited from https://github.com/amirhosseinh77/UNet-AerialSegmentation/blob/main/losses.py
 
