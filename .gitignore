@@ -167,3 +167,4 @@ mne-torch/
 *.xlsx
 draft/
 .DS_Store
+.pkl
