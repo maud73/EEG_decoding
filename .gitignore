@@ -166,3 +166,4 @@ mne-torch/
 *.csv
 *.xlsx
 draft/
+.DS_Store
