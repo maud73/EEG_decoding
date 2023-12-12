@@ -7,6 +7,15 @@ import math
 from torch.autograd import Variable
 from sklearn.metrics import f1_score
 
+num_epochs = 3
+batch_size = 8
+lr = 0.01
+betas = (0.9, 0.999)
+eps = 0.00000001
+weight_decay =  0.1
+step_size = 0.1
+gamma = 0.5
+
 # Code edited from https://github.com/amirhosseinh77/UNet-AerialSegmentation/blob/main/model.py
 
 class DoubleConv(nn.Module):
@@ -140,6 +149,10 @@ class FocalLoss(nn.Module):
         else:
             raise ValueError("Invalid reduction option. Use 'mean', 'sum', or 'none'.")
 
+def he_init(layer):
+  if isinstance(layer, nn.Conv2d):
+    nn.init.kaiming_normal_(layer.weight, mode='fan_in', nonlinearity='relu')
+
 def label_weights(target):
     N = target.shape[0]*25
     freq_min = torch.sum(target == 1) / N
@@ -209,44 +222,45 @@ def train_epoch(model, optimizer, scheduler, criterion, train_loader, epoch, dev
     lr_history = []
 
     for batch_idx, (data,target) in enumerate(train_loader) :
-      ## DEBUG
+        if batch_idx < 200:
+            ## DEBUG
 
-      data = data.to(device)
-      target = target.to(device)
+            data = data.to(device)
+            target = target.to(device)
 
-      # Forward pass
-      optimizer.zero_grad()
-      output = model(data)
+            # Forward pass
+            optimizer.zero_grad()
+            output = model(data)
 
-      # Compute the gradient
-      loss = criterion(output,target)
-      loss.backward()
+            # Compute the gradient
+            loss = criterion(output,target)
+            loss.backward()
 
-      # Update the parameters of the model with a gradient step
-      optimizer.step()
-      scheduler.step()
+            # Update the parameters of the model with a gradient step
+            optimizer.step()
+            scheduler.step()
 
-      pred = predict(output)
-      acc = accuracy(pred, target)
-      soft_acc = soft_accuracy(pred, target)
-      f1 = f1_score(target.view(-1).cpu(), pred.view(-1).cpu())
+            pred = predict(output)
+            acc = accuracy(pred, target)
+            soft_acc = soft_accuracy(pred, target)
+            f1 = f1_score(target.view(-1).cpu(), pred.view(-1).cpu())
 
-      loss_float = loss.item()
-      loss_history.append(loss_float)
-      accuracy_history.append(acc)
-      soft_accuracy_history.append(soft_acc)
-      f1_history.append(f1)
+            loss_float = loss.item()
+            loss_history.append(loss_float)
+            accuracy_history.append(acc)
+            soft_accuracy_history.append(soft_acc)
+            f1_history.append(f1)
 
-      lr_history.append(scheduler.get_last_lr()[0])
-      if batch_idx % (len(train_loader.dataset) // len(data) // 10) == 0:
-          print(
-              f"Train Epoch: {epoch}-{batch_idx:03d} "
-              f"batch_loss={loss_float:0.2e} "
-              f"batch_acc={acc:0.3f} "
-              f"batch_soft_acc={soft_acc:0.3f} "
-              f"batch_f1={f1:0.3f} "
-              f"lr={scheduler.get_last_lr()[0]:0.3e} "
-          )
+            lr_history.append(scheduler.get_last_lr()[0])
+            if batch_idx % (len(train_loader.dataset) // len(data) // 10) == 0:
+                print(
+                    f"Train Epoch: {epoch}-{batch_idx:03d} "
+                    f"batch_loss={loss_float:0.2e} "
+                    f"batch_acc={acc:0.3f} "
+                    f"batch_soft_acc={soft_acc:0.3f} "
+                    f"batch_f1={f1:0.3f} "
+                    f"lr={scheduler.get_last_lr()[0]:0.3e} "
+                )
 
     return loss_history, accuracy_history, soft_accuracy_history, f1_history, lr_history
 
