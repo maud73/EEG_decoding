@@ -485,7 +485,7 @@ def save_prediction(true_patterns, pred_patterns, outpath) :
 
     fig, ax = plot_pattern([true_pattern, pred_pattern])
     i+= 1
-    filname = f'Pred_vs_true_n°{i}'
+    filname = f'Pred_vs_true_n{i}'
     fig.savefig(os.path.join(outpath, filname))
 
   print('saving pattern into trials/testing_patterns_example')
