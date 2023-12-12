@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import copy
 import pandas as pd
+import optuna
+import os
 #from xgboost import XGBClassifier
 
 # ===== Parameters =====
@@ -11,13 +13,13 @@ num_epochs = 250
 batch_size = 50 #batch_size training and validating is 1
 
 #optimizer: Adam
-lr=0.001
-betas=(0.9, 0.999)
-eps=1e-08
-weight_decay=0
+betas = (0.9, 0.999)
+lr=0.001 
+eps=1e-08 #hyp
+weight_decay=0 #hyp
 
 #scheduler
-step_size = 10
+step_size = 10 
 gamma = 0.1
 
 # ================ MODELS ================
@@ -87,16 +89,24 @@ def train_single_model(model,
                        train_loader,
                        num_pixel,
                        device,
-                       weight_loss):
+                       weight_loss, 
+                       hyperparam):
 
     #crit, optim and scheduler
-    criterion =  torch.nn.MultiLabelSoftMarginLoss() #torch.nn.SoftMarginLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
+    criterion =  torch.nn.MultiLabelSoftMarginLoss(weight = weight_loss) #torch.nn.SoftMarginLoss()
+    
+    optimizer = torch.optim.Adam(model.parameters(), 
+                                 lr=hyperparam['lr'], 
+                                 betas=betas, 
+                                 eps=hyperparam['esp'], 
+                                 weight_decay=hyperparam['weight_decay'])
+    
     scheduler= torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
 
     #regularization parameters
-    reg_type = model.reg_type
-    reg_term = model.reg_term
+    reg_type = hyperparam['reg_type']
+    reg_term = hyperparam['reg_term']
+
 
     loss_per_epoch = []
     acc_per_epoch = []
@@ -123,12 +133,12 @@ def train_single_model(model,
         # Add regularization:  Full loss = data loss + regularization loss
         weight = model.fc.weight.squeeze()
 
-        if model.reg_type == 'L1':  # add L1 (LASSO - Least Absolute Shrinkage and Selection Operator)
+        if reg_type == 'L1':  # add L1 (LASSO - Least Absolute Shrinkage and Selection Operator)
                                                         # loss which leads to sparsity.
-            loss += model.reg_term * torch.sum(torch.abs(weight))
+            loss += reg_term * torch.sum(torch.abs(weight))
 
-        elif model.reg_type == 'L2':   # add L2 (Ridge) loss
-            loss += model.reg_term * torch.sum(weight * weight)
+        elif reg_type == 'L2':   # add L2 (Ridge) loss
+            loss += reg_term * torch.sum(weight * weight)
 
         #backward and optimize
         optimizer.zero_grad()
@@ -154,14 +164,14 @@ def eval_single_model(model,
                        val_loader,
                        num_pixel,
                        device,
-                      weight_loss):
+                       loss_weight,
+                       hyperparam):
 
-  criterion = torch.nn.MultiLabelSoftMarginLoss()
-  optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
- 
+  criterion = torch.nn.MultiLabelSoftMarginLoss(weight= loss_weight)
+  
   #regularization parameters
-  reg_type = model.reg_type
-  reg_term = model.reg_term
+  reg_type = hyperparam['reg_type']
+  reg_term = hyperparam['reg_term']
 
   #init
   best_acc = 0
@@ -187,11 +197,11 @@ def eval_single_model(model,
       # Add regularization:  Full loss = data loss + regularization loss
       weight = model.fc.weight.squeeze()
 
-      if model.reg_type == 'L1':  # add L1 (LASSO) (which leads to sparsity)
-        loss += model.reg_term * torch.sum(torch.abs(weight))
+      if reg_type == 'L1':  # add L1 (LASSO) (which leads to sparsity)
+        loss += reg_term * torch.sum(torch.abs(weight))
 
-      elif model.reg_type == 'L2':   # add L2 (Ridge)
-          loss += model.reg_term * torch.sum(weight * weight)
+      elif reg_type == 'L2':   # add L2 (Ridge)
+          loss += reg_term * torch.sum(weight * weight)
 
     # Collect statistics
       running_loss += loss.cpu().item() * batch_x.size(0)  # images.size(0) is batch size.
@@ -215,7 +225,8 @@ def train(full_model,
           train_loader,
           eval_loader,
           device, 
-          weight_loss
+          weight_loss,
+          hyperparam
           ) :
 
   to_store = pd.DataFrame(columns=['Pixel n°', 'Training loss','Learning rate history', 'Training accuracy', 'Validating accuracy'])
@@ -224,11 +235,9 @@ def train(full_model,
     print('Pixel ', i )
     weight = weight_loss[i].to(device)
 
-    loss_per_epoch, acc_per_epoch, lr_history = train_single_model(model,train_loader, i, device, weight)
+    loss_per_epoch, acc_per_epoch, lr_history = train_single_model(model,train_loader, i, device, weight,hyperparam[i])
 
-    best_acc = eval_single_model(model, eval_loader, i, device, weight)
-
-    df = pd.DataFrame([[i, loss_per_epoch, acc_per_epoch,lr_history, best_acc]])
+    best_acc = eval_single_model(model, eval_loader, i, device, weight, hyperparam[i])
 
     #Store
     to_store.loc[len(to_store.index)] =  [i, loss_per_epoch,lr_history,acc_per_epoch, best_acc]
@@ -304,6 +313,140 @@ def test(trained_model, test_loader, outpath, device) :
   return to_store
 
 # ================ ADDITIONNAL FUNCTIONS ================
+# Optuna function to give the best parameters for each SMV_pixel 
+
+def find_hyperparam(path_to_save,device, weight_loss,input_size, num_pixels = 25):
+  '''return a pd.serie hyperparam[num_pixel][hyperparameter] '''
+
+  optuna_result = pd.DataFrame(columns = ["Number of finished trials", 
+                                          "Number of pruned trials",
+                                          "Number of complete trials",
+                                          "Best trial",
+                                          "Best accuracy",
+                                          "Param"])
+  for i in range(num_pixels): 
+    print('Pixel n°',i)
+    df = run_optuna(i, weight_loss[i], device, input_size)
+    optuna_result.loc[len(optuna_result.index)] =  [df["Number of finished trials"], 
+                                                    df["Number of pruned trials"],
+                                                    df["Number of complete trials"], 
+                                                    df["Best trial"], 
+                                                    df["Best accuracy"], 
+                                                    df["Param"]]
+    
+
+  path = path_to_save 
+
+  os.makedirs(path, exist_ok=True)
+
+  optuna_result.to_csv(path + '/hyperparam.csv')
+
+  print('hyperparameters saved in /trials directory')
+
+  return optuna_result['Param']
+
+
+def run_optuna(num_pixel, weight_loss, device, input_size):
+  study = optuna.create_study(direction="maximize")
+  study.optimize(lambda trial: objective(trial, num_pixel, weight_loss, device, input_size), n_trials=10)
+
+  pruned_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.PRUNED])
+  complete_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.COMPLETE])
+
+  param = []
+
+  trial = study.best_trial
+
+  param ={}
+
+  for key, value in trial.params.items():
+     param[key] = value
+
+  to_save = {"Number of finished trials" :len(study.trials),
+             "Number of pruned trials": len(pruned_trials),
+             "Number of complete trials": len(complete_trials),
+             "Best trial": study.best_trial,
+             "Best accuracy": trial.value,
+             "Param": param }
+
+  return to_save
+
+
+def objective(trial, num_pixel, weight_loss, device, input_size):
+    # Generate the optimizers.
+
+    lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
+    reg_term = trial.suggest_float('reg_term', 1e-5, 1e-1, log=True)
+    weight_decay = trial.suggest_float('weight_decay', 1e-5, 1e-1, log=True)
+    eps=trial.suggest_float('eps',1e-09, 1e-05, log = True)
+    reg_type = trial.suggest_categorical("reg_type", ["L1", "L2"])
+
+
+    model = SVM_pixel(input_size).to(device)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
+    criterion = torch.nn.MultiLabelSoftMarginLoss(weight = weight_loss)
+
+
+    # Training of the model.
+    for epoch in range(num_epochs):
+        model.train()
+        for batch_idx, (batch_x, batch_y) in enumerate(train_loader):
+          batch_x, batch_y = resize_batch(batch_x, batch_y,  num_pixel)
+          batch_x, batch_y = batch_x.to(device), batch_y.to(device)
+
+          output = model(batch_x)
+          loss = criterion(output, batch_y)
+    
+          # Add regularization:  Full loss = data loss + regularization loss
+          weight = model.fc.weight.squeeze()
+          if reg_type == 'L1':  # add L1 (LASSO - Least Absolute Shrinkage and Selection Operator)
+                                                        # loss which leads to sparsity.
+              loss += reg_term * torch.sum(torch.abs(weight))
+
+          elif reg_type == 'L2':   # add L2 (Ridge) loss
+              loss += reg_term * torch.sum(weight * weight)
+
+          optimizer.zero_grad()
+          loss.backward()
+          optimizer.step()
+
+          # Add regularization:  Full loss = data loss + regularization loss
+          weight = model.fc.weight.squeeze()
+          if reg_type == 'L1':  # add L1 (LASSO - Least Absolute Shrinkage and Selection Operator)
+                                                        # loss which leads to sparsity.
+              loss += reg_term * torch.sum(torch.abs(weight))
+
+          elif reg_type == 'L2':   # add L2 (Ridge) loss
+              loss += reg_term * torch.sum(weight * weight)
+
+          optimizer.zero_grad()
+          loss.backward()
+          optimizer.step()
+
+        # Validation of the model.
+        model.eval()
+        correct = 0
+        with torch.no_grad():
+            for batch_idx, (batch_x, batch_y) in enumerate(val_loader):
+                batch_x, batch_y = resize_batch(batch_x, batch_y,  0)
+                batch_x, batch_y = batch_x.to(device), batch_y.to(device)
+                output = model(batch_x)
+
+                # Get the index of the max log-probability.
+                pred = model.predict_label(output)
+                correct += pred.eq(batch_y.view_as(pred)).sum().item()
+
+        accuracy = correct / len(val_loader.dataset)
+
+        trial.report(accuracy, epoch)
+
+        # Handle pruning based on the intermediate value.
+        if trial.should_prune():
+            raise optuna.exceptions.TrialPruned()
+
+    return accuracy
+
 #score fonctions
 def F1andscore(true, pred, label = '-11'):
   

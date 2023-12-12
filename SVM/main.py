@@ -2,15 +2,6 @@ from SVM import *
 from Data_processing import get_dataloaders, get_data
 
 def main() :
-  param = {'num_epochs': num_epochs,
-           'batch_size': batch_size,
-           'Optimizer param lr': lr,
-           'Optimizer param batas' : betas,
-           'Optimizer param eps' : eps,
-           'Optimizer param weight decay' : weight_decay,
-           'scheduler param step size' : step_size,
-           'scheduler param gamma': gamma}
-  
   # ===== Data =====
   #file_path = 'drive/MyDrive/Project2/resampled_epochs_subj_0.pkl' #for the drive
   file_path = 'SVM/resampled_epochs_subj_0.pkl'
@@ -26,15 +17,28 @@ def main() :
 
   device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+  #===== HyperParameters =====
+  print("Hyperparameters searching ...")
+  hyperparam = find_hyperparam(path_to_save,device, weight_loss,input_size)
+
+  param = {'num_epochs': num_epochs,
+           'batch_size': batch_size,
+           'Optimizer param lr': hyperparam[:]['lr'],
+           'Optimizer param batas' : (0.9, 0.999),
+           'Optimizer param eps' : hyperparam[:]['esp'],
+           'Optimizer param weight decay' : hyperparam[:]['weight_decay'],
+           'scheduler param step size' : step_size,
+           'scheduler param gamma': gamma}
+
   # ===== Model =====
   #build a model
+  print('Building the model...')
   SMVmodel = SVM(device, input_size, num_classes = 60, pixel_nb = 25)
   SMVmodel = SMVmodel.to(device)
-  #model = SVM(input_size, num_classes = 60, pixel_nb = 25)
 
   #Train and validate the model
   print("Training ...")
-  Training_results = train(SMVmodel,train_loader,val_loader, device, weight_loss) #columns=['Pixel n°', 'Training loss','Learning rate history', 'Training accuracy', 'Validating accuracy']
+  Training_results = train(SMVmodel,train_loader,val_loader, device, weight_loss, hyperparam) #columns=['Pixel n°', 'Training loss','Learning rate history', 'Training accuracy', 'Validating accuracy']
 
   #Test the model
   print("Testing ...")
