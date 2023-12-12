@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 def he_init(layer):
   if isinstance(layer, nn.Conv2d):

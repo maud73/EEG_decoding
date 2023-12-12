@@ -1,4 +1,6 @@
 from Data_processing import get_dataloaders, get_data
+from train_functions import run_training
+
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,9 +12,9 @@ import pickle
 
 
 def main():
-
+        print("UNet")
         # === Load the data ===        
-        file_path = 'UNet/resampled_epochs_subj_0_corrected.pkl'
+        file_path = 'data/resampled_epochs_subj_0.pkl'
         epochs, labels = get_data(file_path)
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -23,9 +25,9 @@ def main():
         labels=labels[:155],
         batch_size=batch_size
         )
-
+        
         train_loader, val_loader, test_loader = get_dataloaders(**data_kwargs)
-
+        print("Data loaded")
 
         # === Define the UNet and the training hyperparameters ===
         model = UNet(n_channels=1, n_classes=2).to(device)
@@ -45,7 +47,7 @@ def main():
 
         # === Train ===
         final_train_acc, val_acc, val_soft_acc, lr_history, train_loss_history, train_acc_history, train_soft_acc_history, train_f1_history, val_loss_history, val_acc_history, val_soft_acc_history, val_f1_history = run_training(model, optimizer, scheduler, criterion, num_epochs, optimizer_kwargs, train_loader, val_loader, device)
-
+        print("Model trained!")
 
         # === Save the training outcomes ===
         filename = str(num_epochs)+'_iters_'+str(batch_size)+'batch_'+str(gamma)+'gamma'
@@ -125,5 +127,5 @@ def main():
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         test(best_model=model, test_loader=test_loader, file_path=file_path)
 
-if __name__ == 'main':
+if __name__ == '__main__':
         main()
