@@ -8,7 +8,9 @@ def main() :
   path_to_save = 'SVM/trials'
 
   epochs, labels = get_data(file_path, convention_neg=True, two_channels=False)
-  train_loader, val_loader, test_loader = get_dataloaders(epochs, labels, batch_size=batch_size)
+
+  train_loader_hyp, val_loader_hyp, _ = get_dataloaders(epochs[:100], labels[:100], batch_size=batch_size)
+  train_loader, val_loader, test_loader = get_dataloaders(epochs[:300], labels[:300], batch_size=batch_size)
   
   #find the ratio that caracterize the balancy between the class 
   item, weight_loss = balance_weight(labels)
@@ -19,7 +21,7 @@ def main() :
 
   #===== HyperParameters =====
   print("Hyperparameters searching ...")
-  hyperparam = find_hyperparam(path_to_save,device, weight_loss,input_size)
+  hyperparam = find_hyperparam(path_to_save,device, weight_loss,input_size, train_loader_hyp, val_loader_hyp)
 
   param = {'num_epochs': num_epochs,
            'batch_size': batch_size,
@@ -27,8 +29,8 @@ def main() :
            'Optimizer param batas' : (0.9, 0.999),
            'Optimizer param eps' : hyperparam[:]['esp'],
            'Optimizer param weight decay' : hyperparam[:]['weight_decay'],
-           'scheduler param step size' : step_size,
-           'scheduler param gamma': gamma}
+           'scheduler param step size' : hyperparam[:]['step_size'],
+           'scheduler param gamma': hyperparam[:]['gamma']}
 
   # ===== Model =====
   #build a model
