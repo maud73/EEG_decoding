@@ -3,14 +3,13 @@ from Data_processing import get_dataloaders, get_data
 
 def main() :
   # ===== Data =====
-  #file_path = 'drive/MyDrive/Project2/resampled_epochs_subj_0.pkl' #for the drive
-  file_path = 'SVM/resampled_epochs_subj_0.pkl'
-  path_to_save = 'SVM/trials'
+  file_path = 'resampled_epochs_subj_0.pkl'
+  path_to_save = 'trials'
 
   epochs, labels = get_data(file_path, convention_neg=True, two_channels=False)
 
   train_loader_hyp, val_loader_hyp, _ = get_dataloaders(epochs[:100], labels[:100], batch_size=batch_size)
-  train_loader, val_loader, test_loader = get_dataloaders(epochs[:300], labels[:300], batch_size=batch_size)
+  train_loader, val_loader, test_loader = get_dataloaders(epochs[:200], labels[:200], batch_size=batch_size)
   
   #find the ratio that caracterize the balancy between the class 
   item, weight_loss = balance_weight(labels)
@@ -25,17 +24,17 @@ def main() :
 
   param = {'num_epochs': num_epochs,
            'batch_size': batch_size,
-           'Optimizer param lr': hyperparam[:]['lr'],
+           'Optimizer param lr': hyperparam['lr'],
            'Optimizer param batas' : (0.9, 0.999),
-           'Optimizer param eps' : hyperparam[:]['esp'],
-           'Optimizer param weight decay' : hyperparam[:]['weight_decay'],
-           'scheduler param step size' : hyperparam[:]['step_size'],
-           'scheduler param gamma': hyperparam[:]['gamma']}
+           'Optimizer param eps' : hyperparam['eps'],
+           'Optimizer param weight decay' : hyperparam['weight_decay'],
+           'scheduler param step size' : hyperparam['step_size'],
+           'scheduler param gamma': hyperparam['gamma']}
 
   # ===== Model =====
   #build a model
   print('Building the model...')
-  SMVmodel = SVM(device, input_size, num_classes = 60, pixel_nb = 25)
+  SMVmodel = SVM(device, input_size, pixel_nb = 25)
   SMVmodel = SMVmodel.to(device)
 
   #Train and validate the model
