@@ -19,7 +19,7 @@ def main():
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         num_epochs = 100
-        batch_size = 5
+        batch_size = 8
         data_kwargs = dict(
         epochs=epochs,
         labels=labels,
