@@ -314,7 +314,8 @@ def find_hyperparam(path_to_save,device, weight_loss,input_size,train_loader_hyp
 
   for i in range(num_pixels): 
     print('Pixel n°',i)
-    df = run_optuna(i, weight_loss[i], device, input_size, train_loader_hyp, val_loader_hyp)
+    weight = weight_loss[i].to(device)
+    df = run_optuna(i, weight, device, input_size, train_loader_hyp, val_loader_hyp)
 
 
     optuna_result.loc[len(optuna_result.index)] =  [df["Number of finished trials"], 
