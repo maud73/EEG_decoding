@@ -343,7 +343,7 @@ def find_hyperparam(path_to_save,device, weight_loss,input_size,train_loader_hyp
 
 def run_optuna(num_pixel, weight_loss, device, input_size, train_loader_hyp, val_loader_hyp):
     study = optuna.create_study(direction="maximize")
-    study.optimize(lambda trial: objective(trial, num_pixel, weight_loss, device, input_size, train_loader_hyp, val_loader_hyp), n_trials=10)
+    study.optimize(lambda trial: objective(trial, num_pixel, weight_loss, device, input_size, train_loader_hyp, val_loader_hyp), n_trials=50)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.COMPLETE])
