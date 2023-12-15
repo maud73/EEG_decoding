@@ -4,13 +4,14 @@ import mne
 import pickle
 import numpy as np
 
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Subset, DataLoader
 from torchvision import transforms
 
 from mne.decoding import Scaler
 from mne import create_info
 
 from sklearn.model_selection import train_test_split    
+
 
 
 # Load the MNE object from the .pkl file
@@ -357,14 +358,14 @@ def get_dataloaders(
     else:
         return train_loader, test_loader
 
-def get_optuna_dataset(train_loader,batch_size):
+def get_valset(train_loader, validation_split):
     trainset_size = len(train_loader.dataset)
-    optuna_subset_size = 0.3
-    subset_indices = np.random.choice(trainset_size, size=int(optuna_subset_size * trainset_size), replace=False)
-    optuna_dataset = Subset(train_loader.dataset,subset_indices)
-    return optuna_dataset
+    subset_size = validation_split
+    subset_indices = np.random.choice(trainset_size, size=int(subset_size * trainset_size), replace=False)
+    val_set = Subset(train_loader.dataset,subset_indices)
+    return val_set
 
-def get_optuna_dataloader(optuna_dataset, validation_split=0.2):
+def get_optuna_dataloader(optuna_dataset, batch_size,validation_split=0.2):
     # Extract indices from the train_loader dataset
     indices = list(range(len(optuna_dataset)))
     # Split indices into training and validation sets
