@@ -1,5 +1,5 @@
 from SVM import *
-from SVM.Data_processing import get_dataloaders, get_data
+from Data_processing import get_dataloaders, get_data
 
 def main() :
   # ===== Data =====
