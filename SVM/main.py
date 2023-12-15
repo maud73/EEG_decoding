@@ -8,7 +8,6 @@ def main() :
 
   epochs, labels = get_data(file_path, convention_neg=True, two_channels=False)
 
-  train_loader_hyp, val_loader_hyp, _ = get_dataloaders(epochs[:500], labels[:500], batch_size=batch_size)
   train_loader, val_loader, test_loader = get_dataloaders(epochs, labels, batch_size=batch_size)
   
   #find the ratio that caracterize the balancy between the class 
@@ -20,12 +19,12 @@ def main() :
 
   #===== HyperParameters =====
   print("Hyperparameters searching ...")
-  hyperparam = find_hyperparam(path_to_save,device, weight_loss,input_size, train_loader_hyp, val_loader_hyp)
+  hyperparam = find_hyperparam(path_to_save,device, weight_loss,input_size, val_loader)
 
   param = {'num_epochs': num_epochs,
            'batch_size': batch_size,
            'Optimizer param lr': hyperparam['lr'],
-           'Optimizer param batas' : (0.9, 0.999),
+           'Optimizer param batas' : (hyperparam['beta1'], hyperparam['beta2']),
            'Optimizer param eps' : hyperparam['eps'],
            'Optimizer param weight decay' : hyperparam['weight_decay'],
            'scheduler param step size' : hyperparam['step_size'],

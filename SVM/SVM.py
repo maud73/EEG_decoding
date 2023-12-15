@@ -8,12 +8,8 @@ import os
 #from xgboost import XGBClassifier
 
 # ===== Parameters =====
-#for the SVM pixel
 num_epochs = 250
 batch_size = 50 
-
-#optimizer: Adam
-betas = (0.9, 0.999)
 
 # ================ MODELS ================
 
@@ -84,7 +80,7 @@ def train_single_model(model,
     
     optimizer = torch.optim.Adam(model.parameters(), 
                                  lr=hyperparam['lr'], 
-                                 betas=betas, 
+                                 betas=(hyperparam['beta1'], hyperparam['beta2']), 
                                  eps=hyperparam['eps'], 
                                  weight_decay=hyperparam['weight_decay'])
     
@@ -224,10 +220,10 @@ def train(full_model,
 
     loss_per_epoch, acc_per_epoch, lr_history = train_single_model(model,train_loader, i, device, weight,hyperparam.iloc[i])
 
-    best_acc = eval_single_model(model, eval_loader, i, device, weight, hyperparam.iloc[i])
+    #best_acc = eval_single_model(model, eval_loader, i, device, weight, hyperparam.iloc[i])
 
     #Store
-    to_store.loc[len(to_store.index)] =  [i, loss_per_epoch,lr_history,acc_per_epoch, best_acc]
+    to_store.loc[len(to_store.index)] =  [i, loss_per_epoch,lr_history,acc_per_epoch] #, best_acc]
 
   return to_store
 
@@ -301,7 +297,7 @@ def test(trained_model, test_loader, outpath, device) :
 # ================ ADDITIONNAL FUNCTIONS ================
 # Optuna function to give the best parameters for each SMV_pixel 
 
-def find_hyperparam(path_to_save,device, weight_loss,input_size,train_loader_hyp, val_loader_hyp, num_pixels = 25):
+def find_hyperparam(path_to_save,device, weight_loss,input_size,val_loader, num_pixels = 25):
   '''return a pd.serie hyperparam[num_pixel][hyperparameter] '''
 
   optuna_result = pd.DataFrame(columns = ["Number of finished trials", 
@@ -310,12 +306,12 @@ def find_hyperparam(path_to_save,device, weight_loss,input_size,train_loader_hyp
                                           "Best accuracy",
                                           "Param"])
   
-  to_return = pd.DataFrame(columns = ['lr', 'weight_decay', 'eps', 'reg_term', 'reg_type', 'step_size', 'gamma'])
+  to_return = pd.DataFrame(columns = ['lr', 'beta1', 'beta2', 'weight_decay', 'eps', 'reg_term', 'reg_type', 'step_size', 'gamma'])
 
   for i in range(num_pixels): 
     print('Pixel n°',i)
     weight = weight_loss[i].to(device)
-    df = run_optuna(i, weight, device, input_size, train_loader_hyp, val_loader_hyp)
+    df = run_optuna(i, weight, device, input_size, val_loader)
 
 
     optuna_result.loc[len(optuna_result.index)] =  [df["Number of finished trials"], 
@@ -325,6 +321,8 @@ def find_hyperparam(path_to_save,device, weight_loss,input_size,train_loader_hyp
                                                     df["Param"]]
 
     to_return.loc[len(to_return.index)] = [df["Param"]['lr'], 
+                                           df["Param"]["beta1"], 
+                                           df["Param"]["beta2"],
                                            df["Param"]['weight_decay'], 
                                            df["Param"]['eps'],
                                            df["Param"]['reg_term'],
@@ -342,9 +340,9 @@ def find_hyperparam(path_to_save,device, weight_loss,input_size,train_loader_hyp
 
   return to_return 
 
-def run_optuna(num_pixel, weight_loss, device, input_size, train_loader_hyp, val_loader_hyp):
+def run_optuna(num_pixel, weight_loss, device, input_size, val_loader):
     study = optuna.create_study(direction="maximize")
-    study.optimize(lambda trial: objective(trial, num_pixel, weight_loss, device, input_size, train_loader_hyp, val_loader_hyp), n_trials=50)
+    study.optimize(lambda trial: objective(trial, num_pixel, weight_loss, device, input_size, val_loader), n_trials=20)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.COMPLETE])
@@ -366,11 +364,13 @@ def run_optuna(num_pixel, weight_loss, device, input_size, train_loader_hyp, val
 
     return to_save
 
-def objective(trial, num_pixel, weight_loss, device, input_size, train_loader_hyp, val_loader_hyp):
+def objective(trial, num_pixel, weight_loss, device, input_size, val_loader):
     # Generate the optimizers.
 
     #optimizer hyperparameters
     lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
+    beta1 = trial.suggest_float("beta1", 0.8, 1, log=False)
+    beta2 = trial.suggest_float("beta2", 0.9, 0.1, log=False)
     weight_decay = trial.suggest_float('weight_decay', 1e-5, 1e-1, log=True)
     eps=trial.suggest_float('eps',1e-09, 1e-05, log = True)
 
@@ -384,56 +384,63 @@ def objective(trial, num_pixel, weight_loss, device, input_size, train_loader_hy
 
     model = SVM_pixel(input_size).to(device)
     
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
+    #split the val_loader into train_loader_hyp, val_loader_hyp
+    train_loader_hyp, val_loader_hyp = split(val_loader)
+    
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=(beta1, beta2), eps=eps, weight_decay=weight_decay)
     criterion = torch.nn.MultiLabelSoftMarginLoss(weight = weight_loss)
     scheduler= torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
 
     # Training of the model.
     for epoch in range(num_epochs):
-        model.train()
-        for batch_x, batch_y in train_loader_hyp:
-          batch_x, batch_y = resize_batch(batch_x, batch_y,  num_pixel)
-          batch_x, batch_y = batch_x.to(device), batch_y.to(device)
+      model.train()
+      for batch_x, batch_y in train_loader_hyp:
+        batch_x, batch_y = resize_batch(batch_x, batch_y,  num_pixel)
+        batch_x, batch_y = batch_x.to(device), batch_y.to(device)
 
-          output = model(batch_x)
-          loss = criterion(output, batch_y)
+        output = model(batch_x)
+        loss = criterion(output, batch_y)
     
-          # Add regularization:  Full loss = data loss + regularization loss
-          weight = model.fc.weight.squeeze()
-          if reg_type == 'L1':  # add L1 (LASSO - Least Absolute Shrinkage and Selection Operator)
+        # Add regularization:  Full loss = data loss + regularization loss
+        weight = model.fc.weight.squeeze()
+        if reg_type == 'L1':  # add L1 (LASSO - Least Absolute Shrinkage and Selection Operator)
                                                         # loss which leads to sparsity.
-              loss += reg_term * torch.sum(torch.abs(weight))
+          loss += reg_term * torch.sum(torch.abs(weight))
 
-          elif reg_type == 'L2':   # add L2 (Ridge) loss
-              loss += reg_term * torch.sum(weight * weight)
+        elif reg_type == 'L2':   # add L2 (Ridge) loss
+          loss += reg_term * torch.sum(weight * weight)
 
-          optimizer.zero_grad()
-          loss.backward()
-          optimizer.step()
-        scheduler.step()
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+      scheduler.step()
 
-        # Validation of the model.
-        model.eval()
-        correct = 0
-        with torch.no_grad():
-            for batch_x, batch_y in  val_loader_hyp:
-                batch_x, batch_y = resize_batch(batch_x, batch_y,  0)
-                batch_x, batch_y = batch_x.to(device), batch_y.to(device)
-                output = model(batch_x)
+      # Validation of the model.
+      model.eval()
+      #correct = 0
+      F1=0
+      with torch.no_grad():
+        for batch_x, batch_y in  val_loader_hyp:
+          batch_x, batch_y = resize_batch(batch_x, batch_y,  0)
+          batch_x, batch_y = batch_x.to(device), batch_y.to(device)
+          output = model(batch_x)
 
-                # Get the index of the max log-probability.
-                pred = model.predict_label(output)
-                correct += pred.eq(batch_y.view_as(pred)).sum().item()
+          # Get the index of the max log-probability.
+          pred = model.predict_label(output)
+          #correct += pred.eq(batch_y.view_as(pred)).sum().item()
 
-        accuracy = correct / len(val_loader_hyp.dataset)
+          F1, _ += F1andscore(batch_y.cpu(), pred.cpu())
 
-        trial.report(accuracy, epoch)
+      #accuracy = correct / len(val_loader_hyp.dataset)
+      F1_= F1/ len(val_loader_hyp.dataset)
+      trial.report(F1_, epoch)
+      #trial.report(accuracy, epoch)
 
-        # Handle pruning based on the intermediate value.
-        if trial.should_prune():
-            raise optuna.exceptions.TrialPruned()
+      # Handle pruning based on the intermediate value.
+      if trial.should_prune():
+        raise optuna.exceptions.TrialPruned()
 
-    return accuracy
+    return F1_ #accuracy
 
 #score fonctions
 def F1andscore(true, pred, label = '-11'):
@@ -536,7 +543,7 @@ def plot_training(Training_results, num_epochs, path_to_save) :
 
     # 'Training_accuracy'
     axs2[n,m].plot(x, pixel[3])
-    axs2[n,m].hlines(pixel[4],0,num_epochs ,color='k',  label='validation accuracy')
+    #axs2[n,m].hlines(pixel[4],0,num_epochs ,color='k',  label='validation accuracy')
 
 
     #'Learning rate history'
