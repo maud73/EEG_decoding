@@ -313,7 +313,7 @@ def objective(trial, num_pixel, weight_loss, device, input_size, o_train_loader,
     #optimizer hyperparameters
     lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
     beta1 = trial.suggest_float("beta1", 0.8, 1, log=False)
-    beta2 = trial.suggest_float("beta2", 0.9, 0.1, log=False)
+    beta2 = trial.suggest_float("beta2", 0.9, 1, log=False)
     weight_decay = trial.suggest_float('weight_decay', 1e-5, 1e-1, log=True)
 
     #regularization hyperparameters
