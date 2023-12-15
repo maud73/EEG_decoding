@@ -30,7 +30,7 @@ def objective(trial, device, train_loader_hyp, val_loader_hyp, num_epochs):
     Returns:
         - f1 score (float): The test F1 score. Parameter to be maximized.
     """
-
+    print("Enter objective")
     # Generate the model
     model = UNet(n_channels=1, n_classes=2).to(device)
     model = model.double()
@@ -60,30 +60,33 @@ def objective(trial, device, train_loader_hyp, val_loader_hyp, num_epochs):
         )
 
     # Train and validate the model
+    print("Start train and validate with optuna")
     for epoch in range(1, num_epochs + 1):
-      for batch_idx, (data,target) in enumerate(train_loader_hyp) :
-        model.train()
-        data = data.to(device)
-        target = target.to(device)
+        print("Epoch: ", epoch)
+        for batch_idx, (data,target) in enumerate(train_loader_hyp) :
 
-        # Forward pass
-        optimizer.zero_grad()
-        output = model(data)
+            model.train()
+            data = data.to(device)
+            target = target.to(device)
+            
+            # Forward pass
+            optimizer.zero_grad()
+            output = model(data)
 
-        # Compute the gradient
-        loss = criterion(output,target)
-        loss.backward()
+            # Compute the gradient
+            loss = criterion(output,target)
+            loss.backward()
 
-        # Update the parameters of the model with a gradient step
-        optimizer.step()
-        scheduler.step()
+            # Update the parameters of the model with a gradient step
+            optimizer.step()
+            scheduler.step()
 
-        model.eval()
-        f1 = test_f1(model, val_loader_hyp, device)
+            model.eval()
+            f1 = test_f1(model, val_loader_hyp, device)
 
-    # Pruning
-    trial.report(f1, epoch)
-    if trial.should_prune():
-        raise optuna.exceptions.TrialPruned()
+        # Pruning
+        trial.report(f1, epoch)
+        if trial.should_prune():
+            raise optuna.exceptions.TrialPruned()
 
     return f1
