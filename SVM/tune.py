@@ -1,7 +1,7 @@
 from SVM import *
 from SVM.Data_processing import get_dataloaders, get_data, get_valset, get_optuna_dataloaders
 
-def tune() :
+def main() :
   val_size = 0.3
   optuna_val_size = 0.3
   test_size = 0.3
@@ -26,9 +26,9 @@ def tune() :
   print("Hyperparameters searching ...")
   hyperparam = find_hyperparam(path_to_save,device, weight_loss,input_size, o_train_loader, o_val_loader)
 
-  print('hyeprarameters:' hyperparam)
+  print('hyeprarameters:', hyperparam)
 
-if __name__ == "__tune__":
+if __name__ == "__main__":
     print('its working')
     main()
 
