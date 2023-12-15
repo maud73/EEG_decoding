@@ -1,5 +1,5 @@
 from SVM import *
-from SVM.Data_processing import get_dataloaders, get_data, get_valset, get_optuna_dataloaders
+from Data_processing import get_dataloaders, get_data, get_valset, get_optuna_dataloaders
 
 def main() :
   val_size = 0.3
