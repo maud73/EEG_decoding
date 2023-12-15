@@ -331,7 +331,7 @@ def objective(trial, num_pixel, weight_loss, device, input_size, o_train_loader,
     scheduler= torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
 
     # Training of the model.
-    for epoch in 10:
+    for epoch in range(10):
       model.train()
       for batch_x, batch_y in o_train_loader:
         batch_x, batch_y = resize_batch(batch_x, batch_y,  num_pixel)
