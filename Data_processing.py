@@ -304,7 +304,9 @@ def get_dataloaders(
     epochs,
     labels,
     batch_size,
-    return_val_set=True):
+    test_size,
+    return_val_set=True,
+    val_size=0.3):
     dataset_cls = EpochsDataset
 
     transform = transforms.Compose(
@@ -312,8 +314,9 @@ def get_dataloaders(
     )
 
     # Assuming 'X' is your feature set and 'y' is your target variable
-    X_temp, epochs_test, y_temp, labels_test = train_test_split(epochs, labels, test_size=0.3, random_state=42)
+    X_temp, epochs_test, y_temp, labels_test = train_test_split(epochs, labels, test_size=test_size, random_state=42)
     if return_val_set:
+        epochs_train, epochs_val, labels_train, labels_val = train_test_split(X_temp, y_temp, test_size=0.3, random_state=42)
         val_set = dataset_cls(
             epochs_data = epochs_val,
             epochs_labels = labels_val,
@@ -324,7 +327,7 @@ def get_dataloaders(
             shuffle=False,
             pin_memory=torch.cuda.is_available()
         )
-        epochs_train, epochs_val, labels_train, labels_val = train_test_split(X_temp, y_temp, test_size=0.3, random_state=42)
+        
     else:
         epochs_train, labels_train = X_temp, y_temp
        
@@ -359,18 +362,18 @@ def get_dataloaders(
     else:
         return train_loader, test_loader
 
-def get_valset(train_loader, validation_split):
+def get_valset(train_loader, val_size):
     trainset_size = len(train_loader.dataset)
-    subset_size = validation_split
+    subset_size = val_size
     subset_indices = np.random.choice(trainset_size, size=int(subset_size * trainset_size), replace=False)
     val_set = Subset(train_loader.dataset,subset_indices)
     return val_set
 
-def get_optuna_dataloader(optuna_dataset, batch_size,validation_split=0.2):
+def get_optuna_dataloaders(optuna_dataset, batch_size,optuna_val_size):
     # Extract indices from the train_loader dataset
     indices = list(range(len(optuna_dataset)))
     # Split indices into training and validation sets
-    train_indices, val_indices = train_test_split(indices, test_size=validation_split, random_state=42)
+    train_indices, val_indices = train_test_split(indices, test_size=optuna_val_size, random_state=42)
     # Create Subset datasets and DataLoaders for training and validation
     train_set = Subset(optuna_dataset, train_indices)
     val_set = Subset(optuna_dataset, val_indices)
