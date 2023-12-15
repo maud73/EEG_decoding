@@ -11,11 +11,11 @@ def main():
     epochs, labels = get_data(file_path='data/resampled_epochs_subj_0.pkl')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    num_epochs = 2
-    batch_size = 8
+    num_epochs = 10
+    batch_size = 32
     data_kwargs = dict(
-        epochs=epochs[:155],
-        labels=labels[:155],
+        epochs=epochs,
+        labels=labels,
         batch_size=batch_size
     )
     
@@ -29,9 +29,11 @@ def main():
     optuna_dataset = get_valset(train_loader, val_size)
     train_loader_hyp, val_loader_hyp = get_optuna_dataloaders(optuna_dataset, batch_size, optuna_val_size)
     print("Start Optuna")
+    
     # Build and run the study
+    n_trials = 35
     study = optuna.create_study(direction='maximize')
-    study.optimize(lambda trial: objective(trial, device, train_loader_hyp, val_loader_hyp, num_epochs), n_trials=3)
+    study.optimize(lambda trial: objective(trial, device, train_loader_hyp, val_loader_hyp, num_epochs, n_trials=n_trials))
     
     pruned_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.COMPLETE])
