@@ -6,9 +6,10 @@ def main() :
   file_path = 'resampled_epochs_subj_0.pkl'
   path_to_save = 'trials'
 
-  epochs, labels = get_data(file_path, convention_neg=True, two_channels=False)
+  test_size = 0.3  
 
-  train_loader, val_loader, test_loader = get_dataloaders(epochs, labels, batch_size=batch_size)
+  epochs, labels = get_data(file_path)
+  train_loader, test_loader = get_dataloaders(epochs, labels, batch_size, test_size, return_val_set=False)
   
   #find the ratio that caracterize the balancy between the class 
   item, weight_loss = balance_weight(labels)
@@ -18,14 +19,14 @@ def main() :
   device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
   #===== HyperParameters =====
-  print("Hyperparameters searching ...")
-  hyperparam = find_hyperparam(path_to_save,device, weight_loss,input_size, val_loader)
+
+  hyperparam = pd.read_csv('path_to_save/hyperparam.csv')
 
   param = {'num_epochs': num_epochs,
            'batch_size': batch_size,
            'Optimizer param lr': hyperparam['lr'],
            'Optimizer param batas' : (hyperparam['beta1'], hyperparam['beta2']),
-           'Optimizer param eps' : hyperparam['eps'],
+           'Optimizer param eps' : 1e-08,
            'Optimizer param weight decay' : hyperparam['weight_decay'],
            'scheduler param step size' : hyperparam['step_size'],
            'scheduler param gamma': hyperparam['gamma']}
@@ -38,7 +39,7 @@ def main() :
 
   #Train and validate the model
   print("Training ...")
-  Training_results = train(SMVmodel,train_loader,val_loader, device, weight_loss, hyperparam) #columns=['Pixel n°', 'Training loss','Learning rate history', 'Training accuracy', 'Validating accuracy']
+  Training_results = train(SMVmodel,train_loader, device, weight_loss, hyperparam) #columns=['Pixel n°', 'Training loss','Learning rate history', 'Training accuracy', 'Validating accuracy']
 
   #Test the model
   print("Testing ...")
