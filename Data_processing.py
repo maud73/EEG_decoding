@@ -316,7 +316,7 @@ def get_dataloaders(
     # Assuming 'X' is your feature set and 'y' is your target variable
     X_temp, epochs_test, y_temp, labels_test = train_test_split(epochs, labels, test_size=test_size, random_state=42)
     if return_val_set:
-        epochs_train, epochs_val, labels_train, labels_val = train_test_split(X_temp, y_temp, test_size=0.3, random_state=42)
+        epochs_train, epochs_val, labels_train, labels_val = train_test_split(X_temp, y_temp, test_size=val_size, random_state=42)
         val_set = dataset_cls(
             epochs_data = epochs_val,
             epochs_labels = labels_val,
