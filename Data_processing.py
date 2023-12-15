@@ -1,5 +1,4 @@
 # To use in Google Colab : see in README.md
-
 import torch
 import mne
 import pickle
@@ -304,7 +303,7 @@ class EpochsDataset(Dataset):
 def get_dataloaders(
     epochs,
     labels,
-    batch_size,num_workers=2):
+    batch_size):
     dataset_cls = EpochsDataset
 
     transform = transforms.Compose(
@@ -325,9 +324,7 @@ def get_dataloaders(
         train_set,
         batch_size=batch_size,
         shuffle=True,  # Shuffle the iteration order over the dataset
-        pin_memory=torch.cuda.is_available(),
-        #drop_last=False,
-        num_workers=num_workers,
+        pin_memory=torch.cuda.is_available() #drop_last=False
     )
 
 
@@ -341,22 +338,20 @@ def get_dataloaders(
         val_set,
         batch_size=1,
         shuffle=False,
-        pin_memory=torch.cuda.is_available(),
-        num_workers=num_workers
+        pin_memory=torch.cuda.is_available()
     )
 
 
     test_set = dataset_cls(
         epochs_data = epochs_test,
         epochs_labels = labels_test,
-        transform=transform,
+        transform=transform
     )
     test_loader = torch.utils.data.DataLoader(
         test_set,
         batch_size=1,
         shuffle=False,
-        pin_memory=torch.cuda.is_available(),
-        num_workers=num_workers
+        pin_memory=torch.cuda.is_available()
     )
 
     return train_loader, val_loader, test_loader
