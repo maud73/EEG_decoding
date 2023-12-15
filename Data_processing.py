@@ -1,5 +1,4 @@
 # To use in Google Colab : see in README.md
-
 import torch
 import mne
 import pickle
@@ -300,11 +299,11 @@ class EpochsDataset(Dataset):
         X = torch.as_tensor(X)
         return X, y
 
-
 def get_dataloaders(
     epochs,
     labels,
-    batch_size,num_workers=2):
+    batch_size,
+    return_val_set=True):
     dataset_cls = EpochsDataset
 
     transform = transforms.Compose(
@@ -313,7 +312,20 @@ def get_dataloaders(
 
     # Assuming 'X' is your feature set and 'y' is your target variable
     X_temp, epochs_test, y_temp, labels_test = train_test_split(epochs, labels, test_size=0.3, random_state=42)
-    epochs_train, epochs_val, labels_train, labels_val = train_test_split(X_temp, y_temp, test_size=0.3, random_state=42)
+    if return_val_set:
+        epochs_train, epochs_val, labels_train, labels_val = train_test_split(X_temp, y_temp, test_size=0.3, random_state=42)
+    else:
+        epochs_train, labels_train = X_temp, y_temp
+        val_set = dataset_cls(
+            epochs_data = epochs_val,
+            epochs_labels = labels_val,
+            transform=transform,)
+        val_loader = torch.utils.data.DataLoader(
+            val_set,
+            batch_size=1,
+            shuffle=False,
+            pin_memory=torch.cuda.is_available()
+        )
     print(f'Dataset is split')
 
     train_set = dataset_cls(
@@ -325,38 +337,49 @@ def get_dataloaders(
         train_set,
         batch_size=batch_size,
         shuffle=True,  # Shuffle the iteration order over the dataset
-        pin_memory=torch.cuda.is_available(),
-        #drop_last=False,
-        num_workers=num_workers,
+        pin_memory=torch.cuda.is_available() #drop_last=False
     )
-
-
-    val_set = dataset_cls(
-        epochs_data = epochs_val,
-        epochs_labels = labels_val,
-        transform=transform,
-        
-    )
-    val_loader = torch.utils.data.DataLoader(
-        val_set,
-        batch_size=1,
-        shuffle=False,
-        pin_memory=torch.cuda.is_available(),
-        num_workers=num_workers
-    )
-
 
     test_set = dataset_cls(
         epochs_data = epochs_test,
         epochs_labels = labels_test,
-        transform=transform,
+        transform=transform
     )
     test_loader = torch.utils.data.DataLoader(
         test_set,
         batch_size=1,
         shuffle=False,
-        pin_memory=torch.cuda.is_available(),
-        num_workers=num_workers
+        pin_memory=torch.cuda.is_available()
     )
 
-    return train_loader, val_loader, test_loader
+    if return_val_set:
+        return train_loader, val_loader, test_loader
+    else:
+        return train_loader, test_loader
+
+def get_optuna_dataset(train_loader,batch_size):
+    trainset_size = len(train_loader.dataset)
+    optuna_subset_size = 0.3
+    subset_indices = np.random.choice(trainset_size, size=int(optuna_subset_size * trainset_size), replace=False)
+    optuna_dataset = Subset(train_loader.dataset,subset_indices)
+    return optuna_dataset
+
+def get_optuna_dataloader(optuna_dataset, validation_split=0.2):
+    # Extract indices from the train_loader dataset
+    indices = list(range(len(optuna_dataset)))
+    # Split indices into training and validation sets
+    train_indices, val_indices = train_test_split(indices, test_size=validation_split, random_state=42)
+    # Create Subset datasets and DataLoaders for training and validation
+    train_set = Subset(optuna_dataset, train_indices)
+    val_set = Subset(optuna_dataset, val_indices)
+    train_loader = torch.utils.data.DataLoader(
+        train_set,
+        batch_size=batch_size,
+        shuffle=True,  # Shuffle the iteration order over the dataset
+        pin_memory=torch.cuda.is_available())
+    val_loader = torch.utils.data.DataLoader(
+        val_set,
+        batch_size=1,
+        shuffle=False,
+        pin_memory=torch.cuda.is_available())
+    return train_loader, val_loader
