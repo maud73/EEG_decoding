@@ -1,17 +1,17 @@
 # To use in Google Colab : see in README.md
-
 import torch
 import mne
 import pickle
 import numpy as np
 
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Subset, DataLoader
 from torchvision import transforms
 
 from mne.decoding import Scaler
 from mne import create_info
 
 from sklearn.model_selection import train_test_split    
+
 
 
 # Load the MNE object from the .pkl file
@@ -247,7 +247,7 @@ def make_alpha(labels_grid_tensor):
     alpha = np.mean(labels_grid_tensor, axis=0)
     return alpha
 
-def get_data(file_path='/content/drive/MyDrive/Colab_Notebooks/data/resampled_epochs_subj_0.pkl', get_alpha=False, convention_neg=False, two_channels=False):
+def get_data(file_path='/content/drive/MyDrive/Colab_Notebooks/data/resampled_epochs_subj_0_corrected.pkl', get_alpha=False, convention_neg=False, two_channels=False):
     # Load data
     epochs = load_data(file_path)
     # Crop the data to keep it only when the visual stimulus was on
@@ -262,7 +262,7 @@ def get_data(file_path='/content/drive/MyDrive/Colab_Notebooks/data/resampled_ep
         labels = make_labels_grid_tensor(labels,get_alpha, convention_neg, two_channels)
     # Normalize data using mne library
     info = create_info(ch_names=epochs.ch_names, sfreq=epochs.info['sfreq'], ch_types='eeg') 
-    scaler = Scaler(info=info, scalings=None, with_mean=True, with_std=True)
+    scaler = Scaler(info=info, scalings='mean', with_mean=True, with_std=True)
     scaler.fit(epochs.get_data())
     epochs = scaler.transform(epochs.get_data())
     
@@ -300,11 +300,13 @@ class EpochsDataset(Dataset):
         X = torch.as_tensor(X)
         return X, y
 
-
 def get_dataloaders(
     epochs,
     labels,
-    batch_size):
+    batch_size,
+    test_size,
+    return_val_set=True,
+    val_size=0.3):
     dataset_cls = EpochsDataset
 
     transform = transforms.Compose(
@@ -312,8 +314,23 @@ def get_dataloaders(
     )
 
     # Assuming 'X' is your feature set and 'y' is your target variable
-    X_temp, epochs_test, y_temp, labels_test = train_test_split(epochs, labels, test_size=0.3, random_state=42)
-    epochs_train, epochs_val, labels_train, labels_val = train_test_split(X_temp, y_temp, test_size=0.3, random_state=42)
+    X_temp, epochs_test, y_temp, labels_test = train_test_split(epochs, labels, test_size=test_size, random_state=42)
+    if return_val_set:
+        epochs_train, epochs_val, labels_train, labels_val = train_test_split(X_temp, y_temp, test_size=val_size, random_state=42)
+        val_set = dataset_cls(
+            epochs_data = epochs_val,
+            epochs_labels = labels_val,
+            transform=transform,)
+        val_loader = torch.utils.data.DataLoader(
+            val_set,
+            batch_size=1,
+            shuffle=False,
+            pin_memory=torch.cuda.is_available()
+        )
+        
+    else:
+        epochs_train, labels_train = X_temp, y_temp
+       
     print(f'Dataset is split')
 
     train_set = dataset_cls(
@@ -325,35 +342,49 @@ def get_dataloaders(
         train_set,
         batch_size=batch_size,
         shuffle=True,  # Shuffle the iteration order over the dataset
-        pin_memory=torch.cuda.is_available(),
-        #drop_last=False,
-        #num_workers=2,
+        pin_memory=torch.cuda.is_available() #drop_last=False
     )
-
-
-    val_set = dataset_cls(
-        epochs_data = epochs_val,
-        epochs_labels = labels_val,
-        transform=transform,
-    )
-    val_loader = torch.utils.data.DataLoader(
-        val_set,
-        batch_size=1,
-        shuffle=False,
-        pin_memory=torch.cuda.is_available(),
-    )
-
 
     test_set = dataset_cls(
         epochs_data = epochs_test,
         epochs_labels = labels_test,
-        transform=transform,
+        transform=transform
     )
     test_loader = torch.utils.data.DataLoader(
         test_set,
         batch_size=1,
         shuffle=False,
-        pin_memory=torch.cuda.is_available(),
+        pin_memory=torch.cuda.is_available()
     )
 
-    return train_loader, val_loader, test_loader
+    if return_val_set:
+        return train_loader, val_loader, test_loader
+    else:
+        return train_loader, test_loader
+
+def get_valset(train_loader, val_size):
+    trainset_size = len(train_loader.dataset)
+    subset_size = val_size
+    subset_indices = np.random.choice(trainset_size, size=int(subset_size * trainset_size), replace=False)
+    val_set = Subset(train_loader.dataset,subset_indices)
+    return val_set
+
+def get_optuna_dataloaders(optuna_dataset, batch_size,optuna_val_size):
+    # Extract indices from the train_loader dataset
+    indices = list(range(len(optuna_dataset)))
+    # Split indices into training and validation sets
+    train_indices, val_indices = train_test_split(indices, test_size=optuna_val_size, random_state=42)
+    # Create Subset datasets and DataLoaders for training and validation
+    train_set = Subset(optuna_dataset, train_indices)
+    val_set = Subset(optuna_dataset, val_indices)
+    train_loader = torch.utils.data.DataLoader(
+        train_set,
+        batch_size=batch_size,
+        shuffle=True,  # Shuffle the iteration order over the dataset
+        pin_memory=torch.cuda.is_available())
+    val_loader = torch.utils.data.DataLoader(
+        val_set,
+        batch_size=1,
+        shuffle=False,
+        pin_memory=torch.cuda.is_available())
+    return train_loader, val_loader
