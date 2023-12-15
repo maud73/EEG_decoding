@@ -43,7 +43,7 @@ def main():
       param[key] = value
     best_params = {'Best F1': trial.value, 'Param': param}
     
-    file_path = 'best_hyperparams.pkl'
+    file_path = 'UNet/best_hyperparams.pkl'
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, 'wb') as fp:
         pickle.dump(best_params, fp)
