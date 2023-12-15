@@ -6,15 +6,16 @@ from tune_functions import objective
 from Data_processing import get_data, get_dataloaders, get_valset, get_optuna_dataloaders
 
 def main():
+    print("Start main")
     # Load the data
     epochs, labels = get_data(file_path='data/resampled_epochs_subj_0.pkl')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    num_epochs = 10
-    batch_size = 16
+    num_epochs = 2
+    batch_size = 8
     data_kwargs = dict(
-        epochs=epochs,
-        labels=labels,
+        epochs=epochs[:155],
+        labels=labels[:155],
         batch_size=batch_size
     )
     
@@ -27,7 +28,7 @@ def main():
     # Split the validation set into pseudo-train and validation sets
     optuna_dataset = get_valset(train_loader, val_size)
     train_loader_hyp, val_loader_hyp = get_optuna_dataloaders(optuna_dataset, batch_size, optuna_val_size)
-    
+    print("Start Optuna")
     # Build and run the study
     study = optuna.create_study(direction='maximize')
     study.optimize(lambda trial: objective(trial, device, train_loader_hyp, val_loader_hyp, num_epochs), n_trials=35)
