@@ -10,7 +10,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH -A cs433
 #SBATCH -q cs433
-#SBATCH --output results_main_UNet.out
+#SBATCH --output tune.out
 
 module purge
 
