@@ -9,7 +9,7 @@ import os
 
 # ===== Parameters =====
 num_epochs = 250
-batch_size = 50 
+batch_size = 32 
 
 # ================ MODELS ================
 
@@ -342,7 +342,7 @@ def find_hyperparam(path_to_save,device, weight_loss,input_size,val_loader, num_
 
 def run_optuna(num_pixel, weight_loss, device, input_size, val_loader):
     study = optuna.create_study(direction="maximize")
-    study.optimize(lambda trial: objective(trial, num_pixel, weight_loss, device, input_size, val_loader), n_trials=20)
+    study.optimize(lambda trial: objective(trial, num_pixel, weight_loss, device, input_size, val_loader), n_trials=35)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.COMPLETE])
@@ -372,7 +372,6 @@ def objective(trial, num_pixel, weight_loss, device, input_size, val_loader):
     beta1 = trial.suggest_float("beta1", 0.8, 1, log=False)
     beta2 = trial.suggest_float("beta2", 0.9, 0.1, log=False)
     weight_decay = trial.suggest_float('weight_decay', 1e-5, 1e-1, log=True)
-    eps=trial.suggest_float('eps',1e-09, 1e-05, log = True)
 
     #regularization hyperparameters
     reg_term = trial.suggest_float('reg_term', 1e-5, 1e-1, log=True)
@@ -392,7 +391,7 @@ def objective(trial, num_pixel, weight_loss, device, input_size, val_loader):
     scheduler= torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
 
     # Training of the model.
-    for epoch in range(num_epochs):
+    for epoch in 10:
       model.train()
       for batch_x, batch_y in train_loader_hyp:
         batch_x, batch_y = resize_batch(batch_x, batch_y,  num_pixel)
