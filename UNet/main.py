@@ -21,11 +21,11 @@ def main():
         epochs, labels = get_data(file_path)
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        num_epochs = 100
-        batch_size = 8
+        num_epochs = 2 #to change for debugging
+        batch_size = 8 #to change for debugging
         data_kwargs = dict(
-        epochs=epochs,
-        labels=labels,
+        epochs=epochs[:155], #to change for debugging
+        labels=labels[:155], #to change for debugging
         batch_size=batch_size
         )
         
