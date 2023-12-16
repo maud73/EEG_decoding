@@ -33,7 +33,7 @@ def main():
     # Build and run the study
     n_trials = 35
     study = optuna.create_study(direction='maximize')
-    study.optimize(lambda trial: objective(trial, device, train_loader_hyp, val_loader_hyp, num_epochs, n_trials=n_trials))
+    study.optimize(lambda trial: objective(trial, device, train_loader_hyp, val_loader_hyp, num_epochs), n_trials=n_trials)
     
     pruned_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.COMPLETE])
