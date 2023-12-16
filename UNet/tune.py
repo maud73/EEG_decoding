@@ -19,7 +19,7 @@ def main():
         batch_size=batch_size
     )
     # Optuna parameter
-    n_trials = 35
+    n_trials = 20
     print(f"Run with n_trials={n_trials}, num_epochs={num_epochs}")
     test_size = 0.2
     val_size = 0.3
