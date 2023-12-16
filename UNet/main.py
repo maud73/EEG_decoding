@@ -23,11 +23,11 @@ def main():
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        num_epochs = 2 #to change for debugging
-        batch_size = 2 #to change for debugging
+        num_epochs = 200 
+        batch_size = 32 
         data_kwargs = dict(
-        epochs=epochs[:64], #to change for debugging
-        labels=labels[:64], #to change for debugging
+        epochs=epochs, 
+        labels=labels, 
         batch_size=batch_size,
         test_size=test_size, 
         return_val_set=False
