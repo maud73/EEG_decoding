@@ -39,7 +39,7 @@ def main():
     
     pruned_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.COMPLETE])
-    
+    print("Saving hyperparameters")
     # Save the best trial
     trial = study.best_trial
     param = {}
@@ -51,6 +51,6 @@ def main():
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, 'wb') as fp:
         pickle.dump(best_params, fp)
-
+    print("Saved and finished")
 if __name__ == "__main__":
     main()
