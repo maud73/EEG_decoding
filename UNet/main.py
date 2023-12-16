@@ -1,5 +1,6 @@
 from Data_processing import get_dataloaders, get_data
 from train_functions import run_training
+from Random import set_random_seeds
 
 import torch
 import matplotlib.pyplot as plt
@@ -13,6 +14,8 @@ import pickle
 
 def main():
         print("UNet")
+        # === Set random seeds for reproducibility ===
+        set_random_seeds()
         # === Load the data ===        
         file_path = 'data/resampled_epochs_subj_0.pkl'
         epochs, labels = get_data(file_path)
