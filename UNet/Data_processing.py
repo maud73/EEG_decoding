@@ -330,7 +330,7 @@ def get_dataloaders(
             pin_memory=torch.cuda.is_available(),
             worker_init_fn=seed_worker,
             generator=g_val)
-        )
+        
         
     else:
         epochs_train, labels_train = X_temp, y_temp
@@ -343,7 +343,7 @@ def get_dataloaders(
         transform=transform,
     )
     g_train = torch.Generator()
-    g_train.manuel_seed(42)
+    g_train.manual_seed(42)
     train_loader = torch.utils.data.DataLoader(
         train_set,
         batch_size=batch_size,

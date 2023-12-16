@@ -205,9 +205,7 @@ def run_training(
     scheduler,
     criterion,
     num_epochs,
-    optimizer_kwargs,
     train_loader,
-    val_loader,
     device="cuda"
 ):
 
@@ -220,10 +218,6 @@ def run_training(
     train_acc_history = []
     train_soft_acc_history = []
     train_f1_history = []
-    val_loss_history = []
-    val_acc_history = []
-    val_soft_acc_history = []
-    val_f1_history = []
 
     for epoch in range(1, num_epochs + 1):
         train_loss, train_acc, train_soft_acc, train_f1, lrs = train_epoch(
@@ -235,10 +229,4 @@ def run_training(
         train_f1_history.extend(train_f1)
         lr_history.extend(lrs)
 
-        val_loss, val_acc, val_soft_acc, val_f1 = validate(model, device, val_loader, criterion)
-        val_loss_history.append(val_loss)
-        val_acc_history.append(val_acc)
-        val_soft_acc_history.append(val_soft_acc)
-        val_f1_history.append(val_f1)
-
-    return sum(train_acc) / len(train_acc), val_acc, val_soft_acc, lr_history, train_loss_history, train_acc_history, train_soft_acc_history, train_f1_history, val_loss_history, val_acc_history, val_soft_acc_history, val_f1_history
+    return sum(train_acc) / len(train_acc), lr_history, train_loss_history, train_acc_history, train_soft_acc_history, train_f1_history

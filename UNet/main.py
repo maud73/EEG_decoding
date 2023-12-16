@@ -1,6 +1,6 @@
 from Data_processing import get_dataloaders, get_data
 from train_functions import run_training
-from Random import set_random_seeds
+from reproducibility import set_random_seeds
 
 import torch
 import matplotlib.pyplot as plt
@@ -19,17 +19,21 @@ def main():
         # === Load the data ===        
         file_path = 'data/resampled_epochs_subj_0.pkl'
         epochs, labels = get_data(file_path)
+        test_size = 0.2
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         num_epochs = 2 #to change for debugging
-        batch_size = 8 #to change for debugging
+        batch_size = 2 #to change for debugging
         data_kwargs = dict(
-        epochs=epochs[:155], #to change for debugging
-        labels=labels[:155], #to change for debugging
-        batch_size=batch_size
+        epochs=epochs[:64], #to change for debugging
+        labels=labels[:64], #to change for debugging
+        batch_size=batch_size,
+        test_size=test_size, 
+        return_val_set=False
         )
         
-        train_loader, val_loader, test_loader = get_dataloaders(**data_kwargs)
+        train_loader, test_loader = get_dataloaders(**data_kwargs)
         print("Data loaded")
 
         # === Define the UNet and the training hyperparameters ===
@@ -51,7 +55,7 @@ def main():
 
 
         # === Train ===
-        final_train_acc, val_acc, val_soft_acc, lr_history, train_loss_history, train_acc_history, train_soft_acc_history, train_f1_history, val_loss_history, val_acc_history, val_soft_acc_history, val_f1_history = run_training(model, optimizer, scheduler, criterion, num_epochs, optimizer_kwargs, train_loader, val_loader, device)
+        final_train_acc, lr_history, train_loss_history, train_acc_history, train_soft_acc_history, train_f1_history = run_training(model, optimizer, scheduler, criterion, num_epochs, train_loader, device)
         print("Model trained!")
 
         # === Save the training outcomes ===
