@@ -36,8 +36,8 @@ def main():
         model = UNet(n_channels=1, n_classes=2).to(device)
         model = model.double()
         optimizer_kwargs = dict(
-        lr=1e-3,
-        weight_decay=1e-2,
+        lr=3.998e-5,
+        weight_decay=0.0002567,
         )
         optimizer = torch.optim.AdamW(model.parameters(), **optimizer_kwargs)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
