@@ -38,13 +38,15 @@ def main():
         optimizer_kwargs = dict(
         lr=3.998e-5,
         weight_decay=0.0002567,
+        betas = (0.9520, 0.9986),
         )
         optimizer = torch.optim.AdamW(model.parameters(), **optimizer_kwargs)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer,
         T_max=(len(train_loader.dataset) * num_epochs) // train_loader.batch_size,
+        eta_min=2.600e-7,
         )
-        gamma = 1 # To be tuned
+        gamma = 0.1876 # To be tuned
         criterion = FocalLoss(gamma=gamma)
 
 
