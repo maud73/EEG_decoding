@@ -18,6 +18,8 @@ def main():
         labels=labels,
         batch_size=batch_size
     )
+    # Optuna parameter
+    n_trials = 35
     
     test_size = 0.2
     val_size = 0.3
@@ -31,7 +33,7 @@ def main():
     print("Start Optuna")
     
     # Build and run the study
-    n_trials = 35
+
     study = optuna.create_study(direction='maximize')
     study.optimize(lambda trial: objective(trial, device, train_loader_hyp, val_loader_hyp, num_epochs), n_trials=n_trials)
     
