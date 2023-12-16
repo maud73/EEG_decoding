@@ -12,7 +12,7 @@ from mne import create_info
 
 from sklearn.model_selection import train_test_split    
 
-
+from reproducibility import seed_worker
 
 # Load the MNE object from the .pkl file
 def load_data(file_path='/content/drive/MyDrive/Colab_Notebooks/data/resampled_epochs_subj_0.pkl'): 
@@ -321,11 +321,15 @@ def get_dataloaders(
             epochs_data = epochs_val,
             epochs_labels = labels_val,
             transform=transform,)
+        g_val = torch.Generator()
+        g_val.manual_seed(42)
         val_loader = torch.utils.data.DataLoader(
             val_set,
             batch_size=1,
             shuffle=False,
-            pin_memory=torch.cuda.is_available()
+            pin_memory=torch.cuda.is_available(),
+            worker_init_fn=seed_worker,
+            generator=g_val)
         )
         
     else:
@@ -338,11 +342,15 @@ def get_dataloaders(
         epochs_labels = labels_train,
         transform=transform,
     )
+    g_train = torch.Generator()
+    g_train.manuel_seed(42)
     train_loader = torch.utils.data.DataLoader(
         train_set,
         batch_size=batch_size,
-        shuffle=True,  # Shuffle the iteration order over the dataset
-        pin_memory=torch.cuda.is_available() #drop_last=False
+        shuffle=True,  
+        pin_memory=torch.cuda.is_available(),
+        worker_init_fn=seed_worker,
+        generator=g_train
     )
 
     test_set = dataset_cls(
@@ -350,11 +358,15 @@ def get_dataloaders(
         epochs_labels = labels_test,
         transform=transform
     )
+    g_test=torch.Generator()
+    g_test.manual_seed(42)
     test_loader = torch.utils.data.DataLoader(
         test_set,
         batch_size=1,
         shuffle=False,
-        pin_memory=torch.cuda.is_available()
+        pin_memory=torch.cuda.is_available(),
+        worker_init_fn=seed_worker,
+        generator=g_test,
     )
 
     if return_val_set:
@@ -377,14 +389,22 @@ def get_optuna_dataloaders(optuna_dataset, batch_size,optuna_val_size):
     # Create Subset datasets and DataLoaders for training and validation
     train_set = Subset(optuna_dataset, train_indices)
     val_set = Subset(optuna_dataset, val_indices)
+    g_train = torch.Generator()
+    g_train.manual_seed(42)
     train_loader = torch.utils.data.DataLoader(
         train_set,
         batch_size=batch_size,
-        shuffle=True,  # Shuffle the iteration order over the dataset
-        pin_memory=torch.cuda.is_available())
+        shuffle=True,  
+        pin_memory=torch.cuda.is_available(),
+        worker_init_fn=seed_worker,
+        generator=g_train)
+    g_val = torch.Generator()
+    g_val.manual_seed(42)
     val_loader = torch.utils.data.DataLoader(
         val_set,
         batch_size=1,
         shuffle=False,
-        pin_memory=torch.cuda.is_available())
+        pin_memory=torch.cuda.is_available(),
+        worker_init_fn=seed_worker,
+        generator=g_val)
     return train_loader, val_loader
