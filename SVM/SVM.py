@@ -241,7 +241,7 @@ def test(trained_model, test_loader, outpath, device) :
 # ================ ADDITIONNAL FUNCTIONS ================
 # Optuna function to give the best parameters for each SMV_pixel 
 
-def find_hyperparam(path_to_save,device, weight_loss,input_size,o_train_loader, o_val_loader, num_pixels = 25):
+def find_hyperparam(path_to_save,device, weight_loss,input_size,o_train_loader, o_val_loader, num_epochs, n_trials, num_pixels = 25):
   '''return a pd.serie hyperparam[num_pixel][hyperparameter] '''
 
   optuna_result = pd.DataFrame(columns = ["Number of finished trials", 
@@ -255,7 +255,7 @@ def find_hyperparam(path_to_save,device, weight_loss,input_size,o_train_loader, 
   for i in range(num_pixels): 
     print('Pixel n°',i)
     weight = weight_loss[i].to(device)
-    df = run_optuna(i, weight, device, input_size, o_train_loader, o_val_loader)
+    df = run_optuna(i, weight, device, input_size, o_train_loader, o_val_loader, num_epochs, n_trials)
 
 
     optuna_result.loc[len(optuna_result.index)] =  [df["Number of finished trials"], 
@@ -283,9 +283,9 @@ def find_hyperparam(path_to_save,device, weight_loss,input_size,o_train_loader, 
 
   return to_return 
 
-def run_optuna(num_pixel, weight_loss, device, input_size, o_train_loader, o_val_loader):
+def run_optuna(num_pixel, weight_loss, device, input_size, o_train_loader, o_val_loader, num_epochs, n_trials):
     study = optuna.create_study(direction="maximize")
-    study.optimize(lambda trial: objective(trial, num_pixel, weight_loss, device, input_size, o_train_loader, o_val_loader), n_trials=35)
+    study.optimize(lambda trial: objective(trial, num_pixel, weight_loss, device, input_size, o_train_loader, o_val_loader, num_epochs=num_epochs), n_trials=n_trials)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.COMPLETE])
@@ -307,7 +307,7 @@ def run_optuna(num_pixel, weight_loss, device, input_size, o_train_loader, o_val
 
     return to_save
 
-def objective(trial, num_pixel, weight_loss, device, input_size, o_train_loader, o_val_loader):
+def objective(trial, num_pixel, weight_loss, device, input_size, o_train_loader, o_val_loader, num_epochs):
     # Generate the optimizers.
 
     #optimizer hyperparameters
@@ -331,7 +331,7 @@ def objective(trial, num_pixel, weight_loss, device, input_size, o_train_loader,
     scheduler= torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
 
     # Training of the model.
-    for epoch in range(10):
+    for epoch in range(num_epochs):
       model.train()
       for batch_x, batch_y in o_train_loader:
         batch_x, batch_y = resize_batch(batch_x, batch_y,  num_pixel)
