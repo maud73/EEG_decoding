@@ -11,16 +11,16 @@ def main():
     epochs, labels = get_data(file_path='data/resampled_epochs_subj_0.pkl')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    num_epochs = 10
-    batch_size = 32
+    num_epochs = 2
+    batch_size = 5
     data_kwargs = dict(
-        epochs=epochs,
-        labels=labels,
+        epochs=epochs[:155],
+        labels=labels[:155],
         batch_size=batch_size
     )
     # Optuna parameter
-    n_trials = 35
-    
+    n_trials = 2
+    print(f"Run with n_trials={n_trials}, num_epochs={num_epochs}")
     test_size = 0.2
     val_size = 0.3
     optuna_val_size = 0.3
