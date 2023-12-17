@@ -402,7 +402,7 @@ def get_optuna_dataloaders(optuna_dataset, batch_size,optuna_val_size):
     g_val.manual_seed(42)
     val_loader = torch.utils.data.DataLoader(
         val_set,
-        batch_size=1,
+        batch_size=batch_size,
         shuffle=False,
         pin_memory=torch.cuda.is_available(),
         worker_init_fn=seed_worker,
