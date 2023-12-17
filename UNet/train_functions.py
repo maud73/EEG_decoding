@@ -23,6 +23,22 @@ def predict(output):
     pred = torch.argmax(output,dim=1)
     return pred
 
+def accuracy(prediction, target):
+    """
+    Computes the batch accuracy of the prediction
+
+    Args:
+        prediction (Tensor): predicted stimulus (n_batch, height and width 5)
+        target (Tensor): target stimulus (n_batch, height and width 5)
+
+    Returns:
+        accuracy (float)
+    """
+    N = prediction.shape[0]
+    temp = torch.all(torch.all(torch.eq(prediction, target), dim=-1), dim=-1) # Dimension n_batch
+    acc = torch.sum(temp)
+    return acc / N
+
 
 def accuracy(prediction, target):
     """
