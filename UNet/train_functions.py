@@ -2,14 +2,6 @@ import torch
 import numpy as np
 from sklearn.metrics import f1_score, balanced_accuracy_score
 
-
-def label_weights(target):
-    N = target.shape[0]*25
-    freq_min = torch.sum(target == 1) / N
-    weights = torch.where(target==0, freq_min.float(), (1-freq_min).float())
-    return weights
-
-
 def predict(output):
     """
     Predicts each pixel's class (i.e. the decoded visual stimulus) from the UNet's output
