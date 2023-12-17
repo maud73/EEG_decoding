@@ -343,7 +343,7 @@ def get_dataloaders(
         transform=transform,
     )
     g_train = torch.Generator()
-    g_train.manuel_seed(42)
+    g_train.manual_seed(42)
     train_loader = torch.utils.data.DataLoader(
         train_set,
         batch_size=batch_size,
