@@ -1,14 +1,6 @@
 import torch
 import numpy as np
-from sklearn.metrics import f1_score
-
-
-def label_weights(target):
-    N = target.shape[0]*25
-    freq_min = torch.sum(target == 1) / N
-    weights = torch.where(target==0, freq_min.float(), (1-freq_min).float())
-    return weights
-
+from sklearn.metrics import f1_score, balanced_accuracy_score
 
 def predict(output):
     """
@@ -38,27 +30,6 @@ def accuracy(prediction, target):
     temp = torch.all(torch.all(torch.eq(prediction, target), dim=-1), dim=-1) # Dimension n_batch
     acc = torch.sum(temp)
     return acc / N
-
-def soft_accuracy(prediction, target, reduction='mean'):
-    """
-    Computes the weighted pixel-wise accuracy of the prediction
-
-    Args:
-        prediction (Tensor): predicted stimulus (n_batch, height and width 5)
-        target (Tensor): target stimulus (n_batch, height and width 5)
-
-    Returns:
-        pixel-wise accuracy (float)
-    """
-    N = prediction.shape[0]
-    weights = label_weights(target)
-    acc = weights*(prediction==target)
-    if reduction == 'mean':
-        return torch.mean(acc).cpu().float()
-    elif reduction == 'none':
-        return (acc / N).cpu()
-
-
 
 def train_epoch(model, optimizer, scheduler, criterion, train_loader, epoch, device):
     """
@@ -96,7 +67,7 @@ def train_epoch(model, optimizer, scheduler, criterion, train_loader, epoch, dev
 
       pred = predict(output)
       acc = accuracy(pred, target)
-      soft_acc = soft_accuracy(pred, target)
+      soft_acc = balanced_accuracy_score(target.view(-1).cpu(), pred.view(-1).cpu())
       f1 = f1_score(target.view(-1).cpu(), pred.view(-1).cpu())
 
       loss_float = loss.item()
@@ -118,39 +89,6 @@ def train_epoch(model, optimizer, scheduler, criterion, train_loader, epoch, dev
           )
 
     return loss_history, accuracy_history, soft_accuracy_history, f1_history, lr_history
-
-
-@torch.no_grad()
-def validate(model, device, val_loader, criterion):
-    model.eval()
-    val_loss = 0
-    correct = 0
-    f1 = 0
-    soft_acc = 0
-
-    for data, target in val_loader:
-        data, target = data.to(device), target.to(device)
-        output = model(data)
-        val_loss += criterion(output, target).item() * len(data)
-        pred = predict(output)
-        correct += accuracy(pred, target)
-        soft_acc += soft_accuracy(pred, target)
-        f1 += f1_score(target.view(-1).cpu(), pred.view(-1).cpu())
-
-    f1 /= len(val_loader.dataset)
-    val_loss /= len(val_loader.dataset)
-
-    print(
-        "Val set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%), Soft accuracy: {:.0f}%, F1 score: {}".format(
-            val_loss,
-            correct,
-            len(val_loader.dataset),
-            100.0 * correct / len(val_loader.dataset),
-            100.0 * soft_acc / len(val_loader.dataset),
-            f1,
-        )
-    )
-    return val_loss, correct / len(val_loader.dataset), soft_acc / len(val_loader.dataset), f1
 
 
 def run_training(
