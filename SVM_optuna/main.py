@@ -1,8 +1,12 @@
 from SVM import *
 from Data_processing import get_dataloaders, get_data, get_valset, get_optuna_dataloaders
-
+from reproducibility import set_random_seeds
 
 def main() :
+  print("SVM")
+  # === Set random seeds for reproducibility ===
+  set_random_seeds()
+  
   # ===== Parameters =====
   test_size = 0.2
   val_size = 0.3
