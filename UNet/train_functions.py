@@ -39,22 +39,6 @@ def accuracy(prediction, target):
     acc = torch.sum(temp)
     return acc / N
 
-
-def accuracy(prediction, target):
-    """
-    Computes the accuracy of the prediction
-
-    Args:
-        prediction (Tensor): predicted stimulus (n_batch, height and width 5)
-        target (Tensor): target stimulus (n_batch, height and width 5)
-
-    Returns:
-        accuracy (float)
-    """
-    N = prediction.shape[0]
-    acc = 0 if not torch.all(torch.eq(prediction, target)) else 1
-    return acc / N
-
 def soft_accuracy(prediction, target, reduction='mean'):
     """
     Computes the weighted pixel-wise accuracy of the prediction
