@@ -37,7 +37,8 @@ def main():
         print("Data loaded")
 
         # === Define the UNet and the training hyperparameters ===
-        model = UNet_dropout(n_channels=1, n_classes=2, p_dropout=0.5).to(device)
+        p_dropout = 0.5
+        model = UNet_dropout(n_channels=1, n_classes=2, p_dropout=p_dropout).to(device)
         model = model.double()
         optimizer_kwargs = dict(
         lr=3.998e-5,
