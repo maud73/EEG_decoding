@@ -153,52 +153,6 @@ def validate(model, device, val_loader, criterion):
     return val_loss, correct / len(val_loader.dataset), soft_acc / len(val_loader.dataset), f1
 
 
-@torch.no_grad()
-def get_predictions(model, device, val_loader, criterion, num=None):
-    model.eval()
-    points = []
-    for data, target in val_loader:
-        data, target = data.to(device), target.to(device)
-        output = model(data)
-        loss = criterion(output, target)
-        pred = predict(output)
-
-        data = np.split(data.cpu().numpy(), len(data))
-        print(loss)
-        loss = np.split(loss.cpu().numpy(), len(data))
-        pred = np.split(pred.cpu().numpy(), len(data))
-        target = np.split(target.cpu().numpy(), len(data))
-        points.extend(zip(data, loss, pred, target))
-
-        if num is not None and len(points) > num:
-            break
-
-    return points
-
-@torch.no_grad()
-def get_predictions(model, device, test_loader, criterion, num=None):
-    model.eval()
-    points = []
-    losses = []
-    for data, target in test_loader:
-        data, target = data.to(device), target.to(device)
-        output = model(data)
-
-        loss = criterion(output, target)
-        pred = predict(output)
-        point = {'target': target.detach().cpu().numpy(),
-         'predict': pred.detach().cpu().numpy(),
-         'loss': loss.detach().cpu().numpy()
-         }
-        losses.append(loss.detach().cpu().numpy())
-
-        points.append(point)
-
-    losses = np.array(losses)
-
-    return points,losses
-
-
 def run_training(
     model,
     optimizer,
