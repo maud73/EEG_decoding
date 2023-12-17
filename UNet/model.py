@@ -104,3 +104,39 @@ class UNet(nn.Module):
         x = self.up4(x, x1)
         logits = self.outc(x) # 2 channels containing the probabilities of gray and black
         return logits
+    
+
+class UNet_dropout(nn.Module):
+    def __init__(self, n_channels, n_classes, p_dropout): # n_classes should be 2, because of binary classification : foreground and background class (gray or black)
+        super(UNet_dropout, self).__init__()
+        self.n_channels = n_channels
+        self.n_classes = n_classes
+        self.p_dropout = p_dropout
+
+        self.inc = DoubleConv(n_channels, 64, kernel_size=3)
+        self.down1 = Down(64, 128, kernel_size=3)
+        self.down2 = Down(128, 256, kernel_size=3)
+        self.down3 = Down(256, 512, kernel_size=2)
+        self.down4 = Down(512, 1024, kernel_size=2) # Kernel size of 2 to fit in (height, width)
+
+        self.up1 = Up(1024, 512, kernel_size=2)
+        self.up2 = Up(512, 256, kernel_size=2)
+        self.up3 = Up(256, 128, kernel_size=3)
+        self.up4 = Up(128, 64, kernel_size=(12,57), stride=(4,2))
+        self.outc = OutConv(64, n_classes)
+        self.dropout = nn.Dropout2d(p=p_dropout)
+
+        self.apply(he_init)
+
+    def forward(self, x):
+        x1 = self.inc(x)
+        x2 = self.down1(self.dropout(x1))
+        x3 = self.down2(self.dropout(x2))
+        x4 = self.down3(self.dropout(x3))
+        x5 = self.down4(self.dropout(x4))
+        x = self.up1(self.dropout(x5), x4)
+        x = self.up2(self.dropout(x), x3)
+        x = self.up3(self.dropout(x), x2)
+        x = self.up4(self.dropout(x), x1)
+        logits = self.outc(x) # 2 channels containing the probabilities of gray and black
+        return logits

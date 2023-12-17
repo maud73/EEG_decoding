@@ -5,7 +5,7 @@ from reproducibility import set_random_seeds
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
-from model import UNet
+from model import UNet, UNet_dropout
 from loss import FocalLoss
 from test import test
 import os 
@@ -13,7 +13,7 @@ import pickle
 
 
 def main():
-        print("UNet")
+        print("UNet_dropout")
         # === Set random seeds for reproducibility ===
         set_random_seeds()
         # === Load the data ===        
@@ -24,7 +24,7 @@ def main():
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         num_epochs = 200 
-        batch_size = 32 
+        batch_size = 64
         data_kwargs = dict(
         epochs=epochs, 
         labels=labels, 
@@ -37,7 +37,7 @@ def main():
         print("Data loaded")
 
         # === Define the UNet and the training hyperparameters ===
-        model = UNet(n_channels=1, n_classes=2).to(device)
+        model = UNet_dropout(n_channels=1, n_classes=2, p_dropout=0.5).to(device)
         model = model.double()
         optimizer_kwargs = dict(
         lr=3.998e-5,
@@ -50,7 +50,7 @@ def main():
         T_max=(len(train_loader.dataset) * num_epochs) // train_loader.batch_size,
         eta_min=2.600e-7,
         )
-        gamma = 0.1876 # To be tuned
+        gamma = 0.1876
         criterion = FocalLoss(gamma=gamma)
 
 
