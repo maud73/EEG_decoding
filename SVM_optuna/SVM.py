@@ -205,8 +205,9 @@ def train(full_model,
 #test functions
 def test_single_model(model, test_loader, num_pixel, weight, device) :
   ''' give the prediction of a single pixel'''
-  running_corrects =0
-  running_wacc=0
+  running_corrects = 0
+  running_wacc = 0
+  running_f1 = 0
   with torch.no_grad():
     for batch_x, batch_y in test_loader:
 
@@ -221,13 +222,16 @@ def test_single_model(model, test_loader, num_pixel, weight, device) :
         preds = model.predict_label(outputs)
 
         running_corrects += torch.mean((preds == batch_y.data).float()).cpu()
-        wacc = accW(batch_y.cpu(), preds.cpu(), weight.cpu())
+        #wacc = accW(batch_y.cpu(), preds.cpu(), weight.cpu())
+        wacc = balanced_accuracy_score(batch_y.view(-1).cpu(),preds.view(-1).cpu()) # Mean wacc on the batch
         running_wacc += wacc
+        running_f1 += f1_score(batch_y.view(-1).cpu(),preds.view(-1).cpu())
 
-    acc = running_corrects / len(test_loader.dataset)
-    wacc = running_wacc / len(test_loader.dataset)
+    acc = running_corrects / len(test_loader)
+    wacc = running_wacc / len(test_loader)
+    f1 = running_f1 / len(test_loader)
 
-  return acc, wacc
+  return acc, wacc, f1
 
 def test(trained_model, test_loader, outpath,weights, device) : 
 
@@ -236,14 +240,17 @@ def test(trained_model, test_loader, outpath,weights, device) :
   #test 1 : the single test over each pixel
   wacc_single = []
   acc_single = []
+  f1_single = []
 
   for i, model in enumerate(trained_model.models) :
-    acc, wacc = test_single_model(model, test_loader, i, weights[i], device)
+    acc, wacc, f1 = test_single_model(model, test_loader, i, weights[i], device)
     wacc_single.append(wacc)
     acc_single.append(acc)
+    f1_single.append(f1)
 
   to_store['Testing singles weighted accuracy'] = wacc_single
   to_store['Testing singles accuracy'] = acc_single
+  to_store['Testing singles f1 score'] = f1_single
 
   with torch.no_grad():
 
