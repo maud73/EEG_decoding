@@ -64,7 +64,6 @@ def objective(trial, device, train_loader_hyp, val_loader_hyp, num_epochs):
     for epoch in range(1, num_epochs + 1):
         print("Epoch: ", epoch)
         for batch_idx, (data,target) in enumerate(train_loader_hyp) :
-
             model.train()
             data = data.to(device)
             target = target.to(device)
@@ -81,8 +80,8 @@ def objective(trial, device, train_loader_hyp, val_loader_hyp, num_epochs):
             optimizer.step()
             scheduler.step()
 
-            model.eval()
-            f1 = test_f1(model, val_loader_hyp, device)
+        model.eval()
+        f1 = test_f1(model, val_loader_hyp, device)
 
         # Pruning
         trial.report(f1, epoch)
