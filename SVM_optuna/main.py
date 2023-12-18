@@ -1,5 +1,5 @@
 from SVM import *
-from Data_processing import get_dataloaders, get_data, get_valset, get_optuna_dataloaders
+from Data_processing import get_dataloaders, get_data
 from reproducibility import set_random_seeds
 
 def main() :
@@ -7,32 +7,27 @@ def main() :
   # === Set random seeds for reproducibility ===
   set_random_seeds()
   
-  # ===== Parameters =====
+  # === Parameters ===
   test_size = 0.2
-  val_size = 0.3
-  optuna_val_size = 0.3
 
-  n_trials = 1
-  num_epochs = 20
-  batch_size = 8
+  num_epochs = 6
+  batch_size = 64
 
-  # ===== Data =====
-  file_path = 'resampled_epochs_subj_0.pkl'
+  # === Data ===
+  file_path = 'data/resampled_epochs_subj_0.pkl'
   path_to_save = 'trials'
 
   epochs, labels = get_data(file_path, convention_neg=True)
-  train_loader, test_loader = get_dataloaders(epochs[:100], labels[:100], batch_size, test_size, return_val_set=False)
-  optuna_dataset = get_valset(train_loader,val_size)
-  o_train_loader, o_val_loader = get_optuna_dataloaders(optuna_dataset, batch_size, optuna_val_size)
+  train_loader, test_loader = get_dataloaders(epochs[:155], labels[:155], batch_size, test_size, return_val_set=False)
   
-  #find the ratio that caracterize the balancy between the class 
+  # === Find the ratio that caracterize the balancy between the class ===
   _ , weights = balance_weight(labels)
 
   input_size = train_loader.dataset[:][0].shape[2]*train_loader.dataset[:][0].shape[0]
 
   device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-  #===== HyperParameters =====
+  # === Hyperparameters ===
 
   hyperparam = pd.read_csv(path_to_save + '/hyperparam.csv')
 

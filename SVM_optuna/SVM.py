@@ -2,7 +2,6 @@ from sklearn.metrics import balanced_accuracy_score, f1_score
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-import copy
 import pandas as pd
 import optuna
 import os
@@ -74,7 +73,7 @@ def train_single_model(model,
                        param):
 
     #crit, optim and scheduler
-    criterion =  torch.nn.MultiLabelSoftMarginLoss(weight = weight_) #torch.nn.SoftMarginLoss()
+    criterion =  torch.nn.SoftMarginLoss() #MultiLabelSoftMarginLoss(weight = weight_) 
 
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=param['lr'],
@@ -93,11 +92,16 @@ def train_single_model(model,
     acc_per_epoch = []
     lr_history = []
     wacc_per_epoch = []
+    f1_per_epoch = []
+
+    if num_pixel == 11 or num_pixel == 18:
+       print("yo")
 
     for epoch in range(num_epoch):
       running_corrects = 0.0
-      running_loss = 0.0
+      running_loss = []
       running_wacc = 0.0
+      running_f1 = 0.0
 
       model.train()  # Set model to training model
 
@@ -127,27 +131,39 @@ def train_single_model(model,
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        scheduler.step() 
+        scheduler.step()
 
-        running_loss += loss.cpu().item() * batch_x.size(0)
-        running_corrects += torch.sum(preds == batch_y.data).cpu()
-        wacc = accW(batch_y.cpu(), preds.cpu(), weight_.cpu())
+        ## DEBUG
+        if loss.isnan():
+           print("loss is nan")
+
+        #running_loss += loss.cpu().item() #* batch_x.size(0)
+        running_loss.append(loss.cpu().item())
+        running_corrects += torch.mean((preds == batch_y.data).float()).cpu()
+        #wacc = accW(batch_y.cpu(), preds.cpu(), weight_.cpu())
+        wacc = balanced_accuracy_score(batch_y.view(-1).cpu(),preds.view(-1).cpu()) # Mean wacc on the batch
         running_wacc += wacc
+        f1 = f1_score(batch_y.view(-1).cpu(),preds.view(-1).cpu()) # Mean f1 on the batch
+        running_f1 += f1
 
-      #save the loss, accuracy and lr
-      loss_per_epoch.append(running_loss / len(train_loader.dataset))
-      acc_per_epoch.append(running_corrects / len(train_loader.dataset))
-      wacc_per_epoch.append(running_wacc / len(train_loader.dataset))
+
+      #save the loss, accuracy, lr, wacc and f1 for each epoch
+      running_loss = torch.nanmean(torch.tensor(running_loss))
+      loss_per_epoch.append(running_loss)
+      acc_per_epoch.append(running_corrects / len(train_loader))
+      wacc_per_epoch.append(running_wacc / len(train_loader))
+      f1_per_epoch.append(running_f1 / len(train_loader))
 
       lr_history.append(scheduler.get_last_lr()[0])
 
       if epoch%100 ==0 : #plot info only every 100 epochs
         print(f'Epoch: {epoch}',
-              'Loss: {:.4f}'.format(running_loss / len(train_loader.dataset)),
-              'Acc: {:.4f}'.format(running_corrects/ len(train_loader.dataset)),
-              'weighted Acc: {:.4f}'.format(running_wacc / len(train_loader.dataset)))
+              'Loss: {:.4f}'.format(running_loss),
+              'Acc: {:.4f}'.format(running_corrects/ len(train_loader)),
+              'weighted Acc: {:.4f}'.format(running_wacc / len(train_loader)),
+              'F1: {:.4f}'.format(running_f1 / len(train_loader)))
 
-    return loss_per_epoch, acc_per_epoch, wacc_per_epoch, lr_history
+    return loss_per_epoch, acc_per_epoch, wacc_per_epoch, f1_per_epoch, lr_history
 
 def train(full_model,
           train_loader,
@@ -161,13 +177,14 @@ def train(full_model,
                                    'Training loss',
                                    'Learning rate history',
                                    'Training accuracy',
-                                   'Training weighted accuracy'])
+                                   'Training weighted accuracy',
+                                   'Training F1'])
 
   for i, model in enumerate(full_model.models):
     print('Pixel ', i )
     weight = weights_[i].to(device)
 
-    loss_per_epoch, acc_per_epoch, wacc_per_epoch, lr_history = train_single_model(model,
+    loss_per_epoch, acc_per_epoch, wacc_per_epoch, f1_per_epoch, lr_history = train_single_model(model,
                                                                                    train_loader,
                                                                                    i,
                                                                                    num_epoch,
@@ -176,7 +193,7 @@ def train(full_model,
                                                                                    hyperparam.iloc[i])
 
     #Store
-    to_store.loc[len(to_store.index)] =  [i, loss_per_epoch,lr_history,acc_per_epoch, wacc_per_epoch]
+    to_store.loc[len(to_store.index)] =  [i, loss_per_epoch,lr_history,acc_per_epoch, wacc_per_epoch, f1_per_epoch]
 
     #save the model
     torch.save(full_model, 'SVMmodel.pth')
@@ -205,7 +222,7 @@ def test_single_model(model, test_loader, num_pixel, weight, device) :
 
         preds = model.predict_label(outputs)
 
-        running_corrects += torch.sum(preds == batch_y.data).cpu()
+        running_corrects += torch.mean((preds == batch_y.data).float()).cpu()
         wacc = accW(batch_y.cpu(), preds.cpu(), weight.cpu())
         running_wacc += wacc
 
