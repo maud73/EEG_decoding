@@ -10,7 +10,7 @@ def main() :
   # === Parameters ===
   test_size = 0.2
 
-  num_epochs = 6
+  num_epochs = 200
   batch_size = 64
 
   # === Data ===
@@ -18,7 +18,7 @@ def main() :
   path_to_save = 'Trials'
 
   epochs, labels = get_data(file_path, convention_neg=True)
-  train_loader, test_loader = get_dataloaders(epochs[:155], labels[:155], batch_size, test_size, return_val_set=False)
+  train_loader, test_loader = get_dataloaders(epochs, labels, batch_size, test_size, return_val_set=False)
   
   # === Find the ratio that caracterize the balancy between the class ===
   _ , weights = balance_weight(labels)
