@@ -59,9 +59,9 @@ def main() :
   print("Plot and save ...")
   save_trial(Training_results, Testing_results, param, path_to_save)
 
-  #plot and save 
-  plot_training(Training_results, num_epochs, path_to_save)
-  plot_testing(Testing_results, path_to_save)
+  # plot and save 
+  # plot_training(Training_results, num_epochs, path_to_save)
+  # plot_testing(Testing_results, path_to_save)
 
 
 if __name__ == "__main__":
