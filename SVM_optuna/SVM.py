@@ -179,9 +179,9 @@ def train(full_model,
     to_store.loc[len(to_store.index)] =  [i, loss_per_epoch,lr_history,acc_per_epoch, wacc_per_epoch]
 
     #save the model
-    torch.save(full_model, 'SVMmodel.pt')
+    torch.save(full_model, 'SVMmodel.pth')
 
-    print('the model is saved under SVMmodel.pt!')
+    print('the model is saved under SVMmodel.pth!')
 
   return to_store
 
@@ -659,7 +659,8 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
 
       # Validation of the model.
       model.eval()
-      ACC =0
+      #ACC = 0
+      F1 = 0
       with torch.no_grad():
         for batch_x, batch_y in  o_val_loader:
           batch_x, batch_y = resize_batch(batch_x, batch_y,  num_pixel)
@@ -667,15 +668,19 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
           output = model(batch_x)
           pred = model.predict_label(output)
 
-          acc = accW(batch_y.cpu(), pred.cpu(), weight_.cpu())
-          ACC += acc
+          #acc = balanced_accuracy_score(batch_y.view(-1).cpu(),pred.view(-1).cpu())
+          #ACC += acc
 
-      ACC_= ACC/ len(o_val_loader.dataset) 
-      trial.report(ACC_, epoch)
+          f1 = f1_score(batch_y.view(-1).cpu(),pred.view(-1).cpu())
+          F1 += f1
+
+      #ACC_= ACC / len(o_val_loader.dataset)
+      F1 /= len(o_val_loader.dataset) 
+      trial.report(F1, epoch)
 
       # Handle pruning based on the intermediate value.
       if trial.should_prune():
         raise optuna.exceptions.TrialPruned()
 
-    return ACC_
+    return F1
 

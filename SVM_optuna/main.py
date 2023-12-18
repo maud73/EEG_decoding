@@ -49,15 +49,15 @@ def main() :
   # ===== Model =====
   #build a model
   print('Building the model...')
-  SMVmodel = SVM(device, input_size, pixel_nb = 25)
-  SMVmodel = SMVmodel.to(device)
+  SVMmodel = SVM(device, input_size, pixel_nb = 25)
+  SVMmodel = SVMmodel.to(device)
 
   #Train and validate the model
-  Training_results = train(SMVmodel,train_loader, device, weights,num_epochs, hyperparam) #columns=['Pixel n°', 'Training loss','Learning rate history', 'Training accuracy', 'Validating accuracy']
+  Training_results = train(SVMmodel,train_loader, device, weights,num_epochs, hyperparam) #columns=['Pixel n°', 'Training loss','Learning rate history', 'Training accuracy', 'Validating accuracy']
 
   #Test the model
   print("Testing ...")
-  Testing_results = test(SMVmodel, test_loader, path_to_save,weights, device) #columns=['Testing singles F1', 'Testing singles accuracy', 'Testing full F1', 'Testing full acc']
+  Testing_results = test(SVMmodel, test_loader, path_to_save,weights, device) #columns=['Testing singles F1', 'Testing singles accuracy', 'Testing full F1', 'Testing full acc']
 
   # ===== Saving and Plots =====
   #save
