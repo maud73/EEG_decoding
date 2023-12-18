@@ -74,7 +74,7 @@ def train_single_model(model,
                        param):
 
     #crit, optim and scheduler
-    criterion = MultiLabelSoftMarginLoss(weight = weight_) # torch.nn.SoftMarginLoss()
+    criterion = torch.nn.MultiLabelSoftMarginLoss(weight = weight_) # torch.nn.SoftMarginLoss()
 
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=param['lr'],
