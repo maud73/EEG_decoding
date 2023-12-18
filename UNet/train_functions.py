@@ -29,7 +29,7 @@ def accuracy(prediction, target):
     N = prediction.shape[0]
     temp = torch.all(torch.all(torch.eq(prediction, target), dim=-1), dim=-1) # Dimension n_batch
     acc = torch.sum(temp)
-    return acc / N
+    return (acc / N).cpu()
 
 def train_epoch(model, optimizer, scheduler, criterion, train_loader, epoch, device):
     """
