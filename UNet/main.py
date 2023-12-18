@@ -37,8 +37,9 @@ def main():
         print("Data loaded")
 
         # === Define the UNet and the training hyperparameters ===
-        p_dropout = 0.5
-        model = UNet_dropout(n_channels=1, n_classes=2, p_dropout=p_dropout).to(device)
+        #p_dropout = 0.5
+        #model = UNet_dropout(n_channels=1, n_classes=2, p_dropout=p_dropout).to(device)
+        model = UNet(n_channels=1, n_classes=2).to(device)
         model = model.double()
         optimizer_kwargs = dict(
         lr=3.998e-5,
@@ -60,7 +61,7 @@ def main():
         print("Model trained!")
 
         # === Save the training outcomes ===
-        filename = str(num_epochs)+'_iters_'+str(batch_size)+'batch_'+str(gamma)+'gamma'
+        filename = str(num_epochs)+'_iters_'+str(batch_size)+'batch_'+str(gamma)+'gamma_wo_dropout'
         file_path = f'UNet/Trials/{filename}.pkl'
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
