@@ -10,7 +10,7 @@ def main() :
   # === Parameters ===
   test_size = 0.2
 
-  num_epochs = 200
+  num_epochs = 500
   batch_size = 64
 
   # === Data ===
