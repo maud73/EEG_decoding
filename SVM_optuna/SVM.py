@@ -48,7 +48,8 @@ class SVM(torch.nn.Module):
     for i,model in enumerate(self.models):
       out = model(x)
       if 'outs' in locals() :
-        outs=torch.concatenate((outs,out), axis = 1)
+        outs=torch.cat((outs,out), axis = 1)
+        # outs=torch.concatenate((outs,out), axis = 1)
       else : outs = out
 
     return outs
@@ -58,7 +59,7 @@ class SVM(torch.nn.Module):
       pred = self.models[i].predict_label(outputs[:,i,:])  #take only the right pixel
 
       if i ==0 : preds = pred
-      else : preds = torch.concatenate((preds, pred), axis = 0)
+      else : preds = torch.cat((preds, pred), axis = 0)
 
     return preds.reshape([outputs.shape[0], outputs.shape[1]]) #size batch_size, nb of pixel
 
