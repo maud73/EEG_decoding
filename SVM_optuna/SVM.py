@@ -74,7 +74,7 @@ def train_single_model(model,
                        param):
 
     #crit, optim and scheduler
-    criterion =  torch.nn.SoftMarginLoss() #MultiLabelSoftMarginLoss(weight = weight_) 
+    criterion = MultiLabelSoftMarginLoss(weight = weight_) # torch.nn.SoftMarginLoss()
 
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=param['lr'],
@@ -94,9 +94,6 @@ def train_single_model(model,
     lr_history = []
     wacc_per_epoch = []
     f1_per_epoch = []
-
-    if num_pixel == 11 or num_pixel == 18:
-       print("yo")
 
     for epoch in range(num_epoch):
       running_corrects = 0.0
