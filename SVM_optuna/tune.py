@@ -12,8 +12,8 @@ def main() :
     val_size = 0.3
     optuna_val_size = 0.3
 
-    n_trials = 1 #25
-    num_epochs = 5 #50 
+    n_trials = 25
+    num_epochs = 30 
     batch_size = 32 
 
     file_path = 'data/resampled_epochs_subj_0.pkl'

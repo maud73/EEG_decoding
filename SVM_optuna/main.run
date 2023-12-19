@@ -4,7 +4,7 @@
 #SBATCH --nodes=1 
 #SBATCH --partition=gpu
 #SBATCH --qos=gpu
-#SBATCH --time=0:50:0
+#SBATCH --time=10:0:0
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1 
 #SBATCH --gres=gpu:1

@@ -71,17 +71,18 @@ def train_single_model(model,
                        num_pixel,
                        num_epoch,
                        device,
+                       weight_,
                        param):
 
-    #crit, optim and scheduler
-    #criterion =  torch.nn.HingeEmbeddingLoss(param['loss_margin']) #MultiLabelSoftMarginLoss(weight = weight_) 
-    criterion = torch.nn.MultiMarginLoss()
+    #criterion, optimizer and scheduler
+    criterion = torch.nn.MultiMarginLoss(weight=weight_.double())
 
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=param['lr'],
                                  betas=(param['beta1'], param['beta2']),
                                  eps=1e-08,)
     
+  
     scheduler_string = param['scheduler']
     scheduler_dict = ast.literal_eval(scheduler_string)
 
@@ -94,7 +95,6 @@ def train_single_model(model,
             optimizer,
             T_max=(len(train_loader.dataset) * num_epoch) // train_loader.batch_size,
             eta_min=scheduler_dict['eta_min'])
-      
 
     #regularization parameters
     #reg_type = param['reg_type']
@@ -126,31 +126,16 @@ def train_single_model(model,
         preds = model.predict_label(outputs)
         loss = criterion(outputs, batch_y.flatten())
 
-        # Add regularization:  Full loss = data loss + regularization loss
+        # Add regularization term
         weight = model.fc.weight.squeeze()
         loss += reg_term * torch.sum(weight * weight)
 
-        '''
-        if reg_type == 'L1':  # add L1 (LASSO - Least Absolute Shrinkage and Selection Operator)
-                                                        # loss which leads to sparsity.
-            loss += reg_term * torch.sum(torch.abs(weight))
-
-        elif reg_type == 'L2':   # add L2 (Ridge) loss
-            loss += reg_term * torch.sum(weight * weight)
-        '''
-
-        '''
-        if torch.isnan(torch.any(weight)) : 
-           print('NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN')
-
-        '''
-
-        #backward and optimize
+        #backward and step
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         scheduler.step()
-          
+  
         running_loss.append(loss.cpu().item())
         running_corrects += torch.mean((preds == batch_y.data).float()).cpu()
         
@@ -181,6 +166,7 @@ def train(full_model,
           train_loader,
           device,
           num_epoch,
+          weights_, 
           hyperparam
           ) :
 
@@ -193,13 +179,14 @@ def train(full_model,
 
   for i, model in enumerate(full_model.models):
     print('Pixel ', i )
-    #weight = weights_[i].to(device)
+    weight_ = weights_[i].to(device)
 
     loss_per_epoch, acc_per_epoch, wacc_per_epoch, f1_per_epoch, lr_history = train_single_model(model,
                                                                                    train_loader,
                                                                                    i,
                                                                                    num_epoch,
                                                                                    device, 
+                                                                                   weight_,
                                                                                    hyperparam.iloc[i])
 
     #Store
@@ -241,7 +228,7 @@ def test_single_model(model, test_loader, num_pixel, device) :
         f1 = f1_score(batch_y.cpu(), preds.cpu())
         running_f1 += f1
 
-    acc = running_corrects / len(test_loader)
+    acc = running_corrects.item() / len(test_loader)
     Wacc = running_wacc / len(test_loader)
     F1 = running_f1/len(test_loader)
 
@@ -258,15 +245,16 @@ def test(trained_model, test_loader, outpath, device) :
 
   for i, model in enumerate(trained_model.models) :
     f1, wacc, acc = test_single_model(model, test_loader, i, device)
+    
+    #save 
     f1_single.append(f1)
     wacc_single.append(wacc)
     acc_single.append(acc)
-    f1_single.append(f1)
-
+  
   to_store['Testing singles weighted accuracy'] = wacc_single
   to_store['Testing singles accuracy'] = acc_single
   to_store['Testing singles F1'] = f1_single
-  i = 0
+  k = 0
   with torch.no_grad():
   
     for batch_x, batch_y in test_loader:
@@ -277,7 +265,7 @@ def test(trained_model, test_loader, outpath, device) :
         batch_y = batch_y.to(device)
 
         outputs = trained_model(batch_x)
-        i+=1
+        k+=1
         if i%100 ==0 :
           pred_pattern = trained_model.predict_pattern(outputs)
           save_prediction(batch_y.cpu(), pred_pattern.cpu(), outpath, i) 
@@ -302,7 +290,7 @@ def resize_batch(batch_x, batch_y, num_pixel):
   batch_y = batch_y.reshape(batch_y.shape[0], 1)
 
   #y label should be int
-  batch_y= batch_y.to(torch.int32)
+  batch_y= batch_y.to(torch.int64)
 
   return batch_x, batch_y
 
@@ -318,17 +306,6 @@ def balance_weight(labels) :
     alphas.append(1-alpha)
 
   return item, alphas
-
-#metric not used
-def accW(true, pred, weight):
-  w=[]
-  for y in true :
-    if y == -1 : w.append(weight[0]) #largerly more -1 -> more accurate if we manage to predict a 1
-    else : w.append(weight[1])
-
-  acc = balanced_accuracy_score(true.flatten(), pred, sample_weight=w)
-
-  return acc
 
 #saving functions
 def save_trial(df_training, df_testing, param, path_to_save):
