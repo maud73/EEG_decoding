@@ -1,6 +1,7 @@
 from SVM import *
 from Data_processing import get_dataloaders, get_data
 from reproducibility import set_random_seeds
+import pandas as pd
 
 def main() :
   print("SVM")
@@ -10,11 +11,11 @@ def main() :
   # === Parameters ===
   test_size = 0.2
 
-  num_epochs = 200
+  num_epochs = 300
   batch_size = 64
 
   # === Data ===
-  file_path = 'data/resampled_epochs_subj_0.pkl'
+  file_path = 'resampled_epochs_subj_0.pkl'
   path_to_save = 'Trials'
 
   epochs, labels = get_data(file_path, convention_neg=True)
@@ -38,7 +39,8 @@ def main() :
            'Optimizer param eps' : 1e-08,
            'Optimizer param weight decay' : hyperparam['weight_decay'],
            'scheduler param step size' : hyperparam['step_size'],
-           'scheduler param gamma': hyperparam['gamma']}
+           'scheduler param gamma': hyperparam['gamma'],
+           'loss margin:': hyperparam['loss_margin']}
 
 
   # ===== Model =====
@@ -60,8 +62,8 @@ def main() :
   save_trial(Training_results, Testing_results, param, path_to_save)
 
   # plot and save 
-  # plot_training(Training_results, num_epochs, path_to_save)
-  # plot_testing(Testing_results, path_to_save)
+  #plot_training(Training_results, num_epochs, path_to_save)
+  #plot_testing(Testing_results, path_to_save)
 
 
 if __name__ == "__main__":

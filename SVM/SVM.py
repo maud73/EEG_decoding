@@ -74,7 +74,7 @@ def train_single_model(model,
                        param):
 
     #crit, optim and scheduler
-    criterion =  torch.nn.SoftMarginLoss() #MultiLabelSoftMarginLoss(weight = weight_) 
+    criterion =  torch.nn.HingeEmbeddingLoss() #MultiLabelSoftMarginLoss(weight = weight_) 
 
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=param['lr'],
@@ -94,9 +94,6 @@ def train_single_model(model,
     lr_history = []
     wacc_per_epoch = []
     f1_per_epoch = []
-
-    if num_pixel == 11 or num_pixel == 18:
-       print("yo")
 
     for epoch in range(num_epoch):
       running_corrects = 0.0
@@ -127,35 +124,35 @@ def train_single_model(model,
 
         elif reg_type == 'L2':   # add L2 (Ridge) loss
             loss += reg_term * torch.sum(weight * weight)
+        
+        '''
+        if torch.isnan(torch.any(weight)) : 
+           print('NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN')
+
+        '''
 
         #backward and optimize
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         scheduler.step()
-
-        ## DEBUG
-        if loss.isnan():
-           print("loss is nan")
-
-        #running_loss += loss.cpu().item() #* batch_x.size(0)
+          
         running_loss.append(loss.cpu().item())
         running_corrects += torch.mean((preds == batch_y.data).float()).cpu()
-        #wacc = accW(batch_y.cpu(), preds.cpu(), weight_.cpu())
+        
         wacc = balanced_accuracy_score(batch_y.view(-1).cpu(),preds.view(-1).cpu()) # Mean wacc on the batch
         running_wacc += wacc
         f1 = f1_score(batch_y.view(-1).cpu(),preds.view(-1).cpu()) # Mean f1 on the batch
         running_f1 += f1
 
-
       #save the loss, accuracy, lr, wacc and f1 for each epoch
+      lr_history.append(scheduler.get_last_lr()[0])
       running_loss = torch.nanmean(torch.tensor(running_loss))
       loss_per_epoch.append(running_loss)
       acc_per_epoch.append(running_corrects / len(train_loader))
       wacc_per_epoch.append(running_wacc / len(train_loader))
       f1_per_epoch.append(running_f1 / len(train_loader))
 
-      lr_history.append(scheduler.get_last_lr()[0])
 
       if epoch%100 ==0 : #plot info only every 100 epochs
         print(f'Epoch: {epoch}',
@@ -196,10 +193,10 @@ def train(full_model,
     #Store
     to_store.loc[len(to_store.index)] =  [i, loss_per_epoch,lr_history,acc_per_epoch, wacc_per_epoch, f1_per_epoch]
 
-    #save the model
-    torch.save(full_model, 'SVMmodel.pth')
+  #save the model
+  torch.save(full_model, 'SVMmodel.pth')
 
-    print('the model is saved under SVMmodel.pth!')
+  print('the model is saved under SVMmodel.pth!')
 
   return to_store
 
@@ -208,8 +205,9 @@ def train(full_model,
 #test functions
 def test_single_model(model, test_loader, num_pixel, weight, device) :
   ''' give the prediction of a single pixel'''
-  running_corrects =0
+  #running_corrects =0
   running_wacc=0
+  running_f1 =0
   with torch.no_grad():
     for batch_x, batch_y in test_loader:
 
@@ -223,14 +221,18 @@ def test_single_model(model, test_loader, num_pixel, weight, device) :
 
         preds = model.predict_label(outputs)
 
-        running_corrects += torch.mean((preds == batch_y.data).float()).cpu()
+        #running_corrects += torch.mean((preds == batch_y.data).float()).cpu()
         wacc = accW(batch_y.cpu(), preds.cpu(), weight.cpu())
         running_wacc += wacc
 
-    acc = running_corrects / len(test_loader.dataset)
-    wacc = running_wacc / len(test_loader.dataset)
+        f1 = f1_score(batch_y.cpu(), preds.cpu())
+        running_f1 += f1
 
-  return acc, wacc
+    #acc = running_corrects / len(test_loader.dataset)
+    Wacc = running_wacc / len(test_loader.dataset)
+    F1 = running_f1/len(test_loader.dataset)
+
+  return F1, Wacc
 
 def test(trained_model, test_loader, outpath,weights, device) : 
 
@@ -238,18 +240,18 @@ def test(trained_model, test_loader, outpath,weights, device) :
 
   #test 1 : the single test over each pixel
   wacc_single = []
-  acc_single = []
+  f1_single = []
 
   for i, model in enumerate(trained_model.models) :
-    acc, wacc = test_single_model(model, test_loader, i, weights[i], device)
+    f1, wacc = test_single_model(model, test_loader, i, weights[i], device)
     wacc_single.append(wacc)
-    acc_single.append(acc)
+    f1_single.append(f1)
 
   to_store['Testing singles weighted accuracy'] = wacc_single
-  to_store['Testing singles accuracy'] = acc_single
-
+  to_store['Testing singles F1'] = f1_single
+  i = 0
   with torch.no_grad():
-
+  
     for batch_x, batch_y in test_loader:
         batch_x = batch_x.flatten(2)
         batch_y = batch_y.flatten(1)
@@ -258,10 +260,12 @@ def test(trained_model, test_loader, outpath,weights, device) :
         batch_y = batch_y.to(device)
 
         outputs = trained_model(batch_x)
+        i+=1
+        if i%100 ==0 :
+          pred_pattern = trained_model.predict_pattern(outputs)
+          save_prediction(batch_y.cpu(), pred_pattern.cpu(), outpath, i) 
 
-        pred_pattern = trained_model.predict_pattern(outputs)
-        save_prediction(batch_y.cpu(), pred_pattern.cpu(), outpath) 
-
+  print('saving example pattern into trials/testing_patterns_example')
   return to_store
 
 # ================ ADDITIONNAL FUNCTIONS ================
@@ -339,6 +343,8 @@ def plot_training(Training_results, num_epochs, path_to_save) :
   fig3.suptitle('Training weighted accuracy', fontsize=40)
   fig4, axs4 = plt.subplots(5, 5, figsize=(30,30))
   fig4.suptitle('Learning rate history', fontsize=40)
+  fig5, axs5 = plt.subplots(5, 5, figsize=(30,30))
+  fig5.suptitle('Training F1 score', fontsize=40)
 
   #x axis are the nb of epochs
   x = np.linspace(0,  num_epochs, num_epochs)
@@ -368,6 +374,10 @@ def plot_training(Training_results, num_epochs, path_to_save) :
     #'Learning rate history'
     axs4[n,m].plot(x, pixel[2])
 
+    #'F1 score'
+    axs5[n,m].plot(x, pixel[5])
+
+
   #save plot into trials directory (same as the csv files)
   outpath = path_to_save + '/plots'
 
@@ -377,7 +387,8 @@ def plot_training(Training_results, num_epochs, path_to_save) :
   fig1.savefig(os.path.join(outpath,"Training_loss.png"))
   fig2.savefig(os.path.join(outpath,"Training_accuracy.png"))
   fig3.savefig(os.path.join(outpath, "Training_weighted_accuracy.png"))
-  fig4.savefig(os.path.join(outpath, "Learning_rate_history"))
+  fig4.savefig(os.path.join(outpath, "Training_Learning_rate_history"))
+  fig5.savefig(os.path.join(outpath, "Training_F1_score"))
 
   print('saving done in /trials/plots directory')
 
@@ -386,50 +397,45 @@ def plot_testing(Testing_results, path_to_save):
   #heat map 5x5 for Testing singles F1
 
   Wacc = Testing_results['Testing singles weighted accuracy'].to_numpy(dtype = np.float64).reshape((5,5))
-  Acc = Testing_results['Testing singles accuracy'].to_numpy(dtype = np.float64).reshape((5,5))
+  f1 = Testing_results['Testing singles F1'].to_numpy(dtype = np.float64).reshape((5,5))
+  acc = Testing_results['Testing singles accuracy'].to_numpy(dtype = np.float64).reshape((5,5))
 
   fig1, ax1 = plt.subplots()
-
-  im, cbar = heatmap(Wacc, ['0', '1', '2', '3', '4'], ['0', '1', '2', '3', '4'], ax=ax1,
-                   cmap="YlGn", cbarlabel="F1 per pixel range ")
-
+  im, cbar = heatmap(Wacc, [], [], ax=ax1,
+                   cmap="YlGn", cbarlabel="Balanced accuracy")
   texts = annotate_heatmap(im, valfmt="{x:.4f}")
-
-  fig1.suptitle('Testing weighted accuracy', fontsize=16)
 
   fig2, ax2 = plt.subplots()
-
-  im, cbar = heatmap(Acc, ['0', '1', '2', '3', '4'], ['0', '1', '2', '3', '4'], ax=ax2,
-                   cmap="YlGn", cbarlabel="accuracy per pixel range")
-
+  im, cbar = heatmap(f1, [], [], ax=ax2,
+                   cmap="YlGn", cbarlabel="F1 score")
   texts = annotate_heatmap(im, valfmt="{x:.4f}")
 
-  fig2.suptitle('Testing accuracy score', fontsize=16)
-
+  fig3, ax3 = plt.subplots()
+  im, cbar = heatmap(acc, [], [], ax=ax3,
+                   cmap="YlGn", cbarlabel="Accuracy")
+  texts = annotate_heatmap(im, valfmt="{x:.4f}")
+ 
   #save plot into trials directory (same as the csv files)
   outpath = path_to_save +'/plots'
   import os
   os.makedirs(outpath, exist_ok=True)
 
   fig1.savefig(os.path.join(outpath,"Testing_wacc.png"))
-  fig2.savefig(os.path.join(outpath,"Testing_acc.png"))
+  fig2.savefig(os.path.join(outpath,"Testing_f1.png"))
+  fig3.savefig(os.path.join(outpath,"Testing_acc.png"))
 
   print('saving done in /trials/plots directory')
 
-def save_prediction(true_patterns, pred_patterns, outpath) :
+def save_prediction(true_patterns, pred_patterns, outpath, i) :
   import os
 
   outpath = outpath + '/testing_pattern_example'
   os.makedirs(outpath, exist_ok=True)
-  i = 0
   for true_pattern, pred_pattern in zip(true_patterns, pred_patterns) :
 
     fig, ax = plot_pattern([true_pattern, pred_pattern])
-    i+= 1
     filname = f'Pred_vs_true_n{i}'
     fig.savefig(os.path.join(outpath, filname))
-
-  print('saving pattern into trials/testing_patterns_example')
 
 def plot_pattern(patterns) :
   from matplotlib.colors import LogNorm
@@ -479,15 +485,16 @@ def heatmap(data, row_labels, col_labels, ax=None,
 
     # Create colorbar
     cbar = ax.figure.colorbar(im, ax=ax, **cbar_kw)
-    cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
+    cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom", fontsize=21)
 
-    # Show all ticks and label them with the respective list entries.
-    ax.set_xticks(np.arange(data.shape[1]), labels=col_labels)
-    ax.set_yticks(np.arange(data.shape[0]), labels=row_labels)
+    # no ticks 
+    ax.set_yticks(np.arange(len(data)), labels=[])
+    ax.set_xticks(np.arange(len(data)), labels=[])
 
     # Let the horizontal axes labeling appear on top.
-    ax.tick_params(top=True, bottom=False,
-                   labeltop=True, labelbottom=False)
+    ax.tick_params(top=False, bottom=False,
+                   labeltop=False, labelbottom=False)
+    
 
     # Rotate the tick labels and set their alignment.
     plt.setp(ax.get_xticklabels(), rotation=-30, ha="right",
@@ -572,7 +579,7 @@ def find_hyperparam(path_to_save,device, weight_loss,input_size,o_train_loader, 
                                           "Best accuracy",
                                           "Param"])
 
-  to_return = pd.DataFrame(columns = ['lr', 'beta1', 'beta2', 'weight_decay', 'reg_term', 'reg_type', 'step_size', 'gamma'])
+  to_return = pd.DataFrame(columns = ['lr', 'beta1', 'beta2', 'weight_decay', 'reg_term', 'reg_type', 'step_size', 'gamma', 'loss_margin'])
   for i in range(num_pixels):
     print('Pixel n°',i)
     weight = weight_loss[i].to(device)
@@ -592,7 +599,8 @@ def find_hyperparam(path_to_save,device, weight_loss,input_size,o_train_loader, 
                                            df["Param"]['reg_term'],
                                            df["Param"]['reg_type'],
                                            df["Param"]['step_size'],
-                                           df["Param"]['gamma']]
+                                           df["Param"]['gamma'],
+                                           df['Param']['loss_margin']]
 
   path = path_to_save
 
@@ -645,10 +653,14 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
     step_size = trial.suggest_float('step_size', 5, 10)
     gamma = trial.suggest_float('gamma', 1e-5, 1e-1, log=True)
 
+    #loss
+    loss_margin = trial.suggest_float('loss_margin', 0, 5)
+
     model = SVM_pixel(input_size).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=(beta1, beta2), eps=1e-08, weight_decay=weight_decay)
-    criterion = torch.nn.MultiLabelSoftMarginLoss(weight = weight_)
+    #criterion = torch.nn.MultiLabelSoftMarginLoss(weight = weight_)
+    criterion = torch.nn.HingeEmbeddingLoss(margin = loss_margin)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
 
     # Training of the model.
@@ -677,8 +689,8 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
 
       # Validation of the model.
       model.eval()
-      #ACC = 0
-      F1 = 0
+      ACC = 0
+      #F1 = 0
       with torch.no_grad():
         for batch_x, batch_y in  o_val_loader:
           batch_x, batch_y = resize_batch(batch_x, batch_y,  num_pixel)
@@ -686,19 +698,19 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
           output = model(batch_x)
           pred = model.predict_label(output)
 
-          #acc = balanced_accuracy_score(batch_y.view(-1).cpu(),pred.view(-1).cpu())
-          #ACC += acc
+          acc = balanced_accuracy_score(batch_y.view(-1).cpu(),pred.view(-1).cpu())
+          ACC += acc
 
-          f1 = f1_score(batch_y.view(-1).cpu(),pred.view(-1).cpu())
-          F1 += f1
+          #f1 = f1_score(batch_y.view(-1).cpu(),pred.view(-1).cpu())
+          #F1 += f1
 
-      #ACC_= ACC / len(o_val_loader.dataset)
-      F1 /= len(o_val_loader.dataset) 
-      trial.report(F1, epoch)
+      ACC_= ACC / len(o_val_loader.dataset)
+      #F1 /= len(o_val_loader.dataset) 
+      trial.report(ACC_, epoch)
 
       # Handle pruning based on the intermediate value.
       if trial.should_prune():
         raise optuna.exceptions.TrialPruned()
 
-    return F1
+    return ACC_
 
