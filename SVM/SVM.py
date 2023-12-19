@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import optuna
 import os
+import ast
 
 # ================ MODELS ================
 
@@ -70,7 +71,6 @@ def train_single_model(model,
                        num_pixel,
                        num_epoch,
                        device,
-                       weight_,
                        param):
 
     #crit, optim and scheduler
@@ -79,15 +79,25 @@ def train_single_model(model,
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=param['lr'],
                                  betas=(param['beta1'], param['beta2']),
-                                 eps=1e-08,
-                                 weight_decay=param['weight_decay'])
+                                 eps=1e-08,)
+    
+    scheduler_string = param['scheduler']
+    scheduler_dict = ast.literal_eval(scheduler_string)
 
-    scheduler= torch.optim.lr_scheduler.StepLR(optimizer, step_size=param['step_size'], gamma=param['gamma'])
+    if scheduler_dict['scheduler'] == 'StepLR':
+       scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=scheduler_dict['step_size'], gamma=scheduler_dict['gamma'])
+
+    
+    if scheduler_dict['scheduler'] == 'CosineAnnealingLR':
+      scheduler= torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer,
+            T_max=(len(train_loader.dataset) * num_epoch) // train_loader.batch_size,
+            eta_min=scheduler_dict['eta_min'])
+      
 
     #regularization parameters
-    reg_type = param['reg_type']
+    #reg_type = param['reg_type']
     reg_term = param['reg_term']
-
 
     loss_per_epoch = []
     acc_per_epoch = []
@@ -117,14 +127,17 @@ def train_single_model(model,
 
         # Add regularization:  Full loss = data loss + regularization loss
         weight = model.fc.weight.squeeze()
+        loss += reg_term * torch.sum(weight * weight)
 
+        '''
         if reg_type == 'L1':  # add L1 (LASSO - Least Absolute Shrinkage and Selection Operator)
                                                         # loss which leads to sparsity.
             loss += reg_term * torch.sum(torch.abs(weight))
 
         elif reg_type == 'L2':   # add L2 (Ridge) loss
             loss += reg_term * torch.sum(weight * weight)
-        
+        '''
+
         '''
         if torch.isnan(torch.any(weight)) : 
            print('NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN')
@@ -166,7 +179,6 @@ def train_single_model(model,
 def train(full_model,
           train_loader,
           device,
-          weights_,
           num_epoch,
           hyperparam
           ) :
@@ -180,18 +192,17 @@ def train(full_model,
 
   for i, model in enumerate(full_model.models):
     print('Pixel ', i )
-    weight = weights_[i].to(device)
+    #weight = weights_[i].to(device)
 
     loss_per_epoch, acc_per_epoch, wacc_per_epoch, f1_per_epoch, lr_history = train_single_model(model,
                                                                                    train_loader,
                                                                                    i,
                                                                                    num_epoch,
                                                                                    device, 
-                                                                                   weight, 
                                                                                    hyperparam.iloc[i])
 
     #Store
-    to_store.loc[len(to_store.index)] =  [i, loss_per_epoch,lr_history,acc_per_epoch, wacc_per_epoch, f1_per_epoch]
+    to_store.loc[len(to_store.index)] =  [i, loss_per_epoch, acc_per_epoch, wacc_per_epoch, f1_per_epoch, lr_history]
 
   #save the model
   torch.save(full_model, 'SVMmodel.pth')
@@ -203,9 +214,9 @@ def train(full_model,
 # ================ TEST FUNCTIONS ================
 
 #test functions
-def test_single_model(model, test_loader, num_pixel, weight, device) :
+def test_single_model(model, test_loader, num_pixel, device) :
   ''' give the prediction of a single pixel'''
-  #running_corrects =0
+  running_corrects =0
   running_wacc=0
   running_f1 =0
   with torch.no_grad():
@@ -221,33 +232,36 @@ def test_single_model(model, test_loader, num_pixel, weight, device) :
 
         preds = model.predict_label(outputs)
 
-        #running_corrects += torch.mean((preds == batch_y.data).float()).cpu()
-        wacc = accW(batch_y.cpu(), preds.cpu(), weight.cpu())
+        running_corrects += torch.mean((preds == batch_y.data).float()).cpu()
+        wacc = balanced_accuracy_score(batch_y.view(-1).cpu(),preds.view(-1).cpu())
         running_wacc += wacc
 
         f1 = f1_score(batch_y.cpu(), preds.cpu())
         running_f1 += f1
 
-    #acc = running_corrects / len(test_loader.dataset)
-    Wacc = running_wacc / len(test_loader.dataset)
-    F1 = running_f1/len(test_loader.dataset)
+    acc = running_corrects / len(test_loader)
+    Wacc = running_wacc / len(test_loader)
+    F1 = running_f1/len(test_loader)
 
-  return F1, Wacc
+  return F1, Wacc, acc
 
-def test(trained_model, test_loader, outpath,weights, device) : 
+def test(trained_model, test_loader, outpath, device) : 
 
-  to_store = pd.DataFrame(columns=['Testing singles weighted accuracy', 'Testing singles accuracy'])
+  to_store = pd.DataFrame(columns=['Testing singles weighted accuracy', 'Testing singles accuracy', 'Testing singles F1'] )
 
   #test 1 : the single test over each pixel
   wacc_single = []
   f1_single = []
+  acc_single =[]
 
   for i, model in enumerate(trained_model.models) :
-    f1, wacc = test_single_model(model, test_loader, i, weights[i], device)
-    wacc_single.append(wacc)
+    f1, wacc, acc = test_single_model(model, test_loader, i, device)
     f1_single.append(f1)
+    wacc_single.append(wacc)
+    acc_single.append(acc)
 
   to_store['Testing singles weighted accuracy'] = wacc_single
+  to_store['Testing singles accuracy'] = acc_single
   to_store['Testing singles F1'] = f1_single
   i = 0
   with torch.no_grad():
@@ -579,7 +593,7 @@ def find_hyperparam(path_to_save,device, weight_loss,input_size,o_train_loader, 
                                           "Best accuracy",
                                           "Param"])
 
-  to_return = pd.DataFrame(columns = ['lr', 'beta1', 'beta2', 'weight_decay', 'reg_term', 'reg_type', 'step_size', 'gamma', 'loss_margin'])
+  to_return = pd.DataFrame(columns = ['lr', 'beta1', 'beta2', 'weight_decay', 'reg_term', 'scheduler', 'loss_margin'])
   for i in range(num_pixels):
     print('Pixel n°',i)
     weight = weight_loss[i].to(device)
@@ -591,15 +605,19 @@ def find_hyperparam(path_to_save,device, weight_loss,input_size,o_train_loader, 
                                                     df["Number of complete trials"],
                                                     df["Best accuracy"],
                                                     df["Param"]]
+    
+    if df['Param']['scheduler'] == 'CosineAnnealingLR' : 
+       scheduler_dict = {'scheduler' : df['Param']['scheduler'], 'eta_min' : df['Param']['eta_min']}
+    else :
+       scheduler_dict = {'scheduler' : df['Param']['scheduler'], 'gamma' : df['Param']['gamma'],'step_size': df['Param']['step_size']}
+    
 
     to_return.loc[len(to_return.index)] = [df["Param"]['lr'],
                                            df["Param"]["beta1"],
                                            df["Param"]["beta2"],
                                            df["Param"]['weight_decay'],
                                            df["Param"]['reg_term'],
-                                           df["Param"]['reg_type'],
-                                           df["Param"]['step_size'],
-                                           df["Param"]['gamma'],
+                                           scheduler_dict,
                                            df['Param']['loss_margin']]
 
   path = path_to_save
@@ -647,12 +665,7 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
 
     #regularization hyperparameters
     reg_term = trial.suggest_float('reg_term', 1e-5, 1e-1, log=True)
-    reg_type = trial.suggest_categorical("reg_type", ["L1", "L2"])
-
-    #scheduler hyperparameters
-    step_size = trial.suggest_float('step_size', 5, 10)
-    gamma = trial.suggest_float('gamma', 1e-5, 1e-1, log=True)
-
+  
     #loss
     loss_margin = trial.suggest_float('loss_margin', 0, 5)
 
@@ -661,8 +674,20 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=(beta1, beta2), eps=1e-08, weight_decay=weight_decay)
     #criterion = torch.nn.MultiLabelSoftMarginLoss(weight = weight_)
     criterion = torch.nn.HingeEmbeddingLoss(margin = loss_margin)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
-
+    
+    #scheduler 
+    scheduler_name = trial.suggest_categorical('scheduler', ['StepLR', 'CosineAnnealingLR'])
+    if scheduler_name == 'StepLR':
+        step_size = trial.suggest_float('step_size', 5, 10)
+        gamma = trial.suggest_float('gamma', 1e-5, 1e-1, log=True)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
+    elif scheduler_name == 'CosineAnnealingLR':
+        eta_min = trial.suggest_float('eta_min', 1e-7, 1e-5, log=True)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer,
+            T_max=(len(o_train_loader.dataset) * num_epochs) // o_train_loader.batch_size,
+            eta_min=eta_min
+        )
     # Training of the model.
     for epoch in range(num_epochs):
       model.train()
@@ -675,12 +700,7 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
 
         # Add regularization:  Full loss = data loss + regularization loss
         weight = model.fc.weight.squeeze()
-        if reg_type == 'L1':  # add L1 (LASSO - Least Absolute Shrinkage and Selection Operator)
-                                                        # loss which leads to sparsity.
-          loss += reg_term * torch.sum(torch.abs(weight))
-
-        elif reg_type == 'L2':   # add L2 (Ridge) loss
-          loss += reg_term * torch.sum(weight * weight)
+        loss += reg_term * torch.sum(weight * weight)
 
         optimizer.zero_grad()
         loss.backward()

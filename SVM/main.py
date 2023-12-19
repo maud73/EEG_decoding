@@ -11,7 +11,7 @@ def main() :
   # === Parameters ===
   test_size = 0.2
 
-  num_epochs = 300
+  num_epochs = 10
   batch_size = 64
 
   # === Data ===
@@ -19,7 +19,7 @@ def main() :
   path_to_save = 'Trials'
 
   epochs, labels = get_data(file_path, convention_neg=True)
-  train_loader, test_loader = get_dataloaders(epochs, labels, batch_size, test_size, return_val_set=False)
+  train_loader, test_loader = get_dataloaders(epochs[:100], labels[:100], batch_size, test_size, return_val_set=False)
   
   # === Find the ratio that caracterize the balancy between the class ===
   _ , weights = balance_weight(labels)
@@ -38,8 +38,7 @@ def main() :
            'Optimizer param batas' : (hyperparam['beta1'], hyperparam['beta2']),
            'Optimizer param eps' : 1e-08,
            'Optimizer param weight decay' : hyperparam['weight_decay'],
-           'scheduler param step size' : hyperparam['step_size'],
-           'scheduler param gamma': hyperparam['gamma'],
+           'scheduler' : hyperparam['scheduler'],
            'loss margin:': hyperparam['loss_margin']}
 
 
@@ -50,11 +49,11 @@ def main() :
   SVMmodel = SVMmodel.to(device)
 
   #Train and validate the model
-  Training_results = train(SVMmodel,train_loader, device, weights,num_epochs, hyperparam) #columns=['Pixel n°', 'Training loss','Learning rate history', 'Training accuracy', 'Validating accuracy']
+  Training_results = train(SVMmodel,train_loader, device,num_epochs, hyperparam) 
 
   #Test the model
   print("Testing ...")
-  Testing_results = test(SVMmodel, test_loader, path_to_save,weights, device) #columns=['Testing singles F1', 'Testing singles accuracy', 'Testing full F1', 'Testing full acc']
+  Testing_results = test(SVMmodel, test_loader, path_to_save, device) 
 
   # ===== Saving and Plots =====
   #save

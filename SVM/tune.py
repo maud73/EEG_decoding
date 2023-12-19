@@ -12,15 +12,15 @@ def main() :
     val_size = 0.3
     optuna_val_size = 0.3
 
-    n_trials = 25
-    num_epochs = 50 
+    n_trials = 1 #25
+    num_epochs = 5 #50 
     batch_size = 32 
 
     file_path = 'resampled_epochs_subj_0.pkl'
     path_to_save = 'Trials'
 
     epochs, labels = get_data(file_path, convention_neg=True)
-    train_loader, _ = get_dataloaders(epochs, labels, batch_size, test_size, return_val_set=False)
+    train_loader, _ = get_dataloaders(epochs[:100], labels[:100], batch_size, test_size, return_val_set=False)
     optuna_dataset = get_valset(train_loader,val_size)
     o_train_loader, o_val_loader = get_optuna_dataloaders(optuna_dataset, batch_size, optuna_val_size)
 
