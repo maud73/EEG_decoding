@@ -124,7 +124,7 @@ def train_single_model(model,
         outputs = model(batch_x)
 
         preds = model.predict_label(outputs)
-        loss = criterion(outputs.flatten(), batch_y.flatten())
+        loss = criterion(outputs, batch_y.flatten())
 
         # Add regularization:  Full loss = data loss + regularization loss
         weight = model.fc.weight.squeeze()
@@ -699,7 +699,7 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
         batch_x, batch_y = batch_x.to(device), batch_y.to(device)
 
         output = model(batch_x)
-        loss = criterion(output, batch_y)
+        loss = criterion(output, batch_y.flatten())
 
         # Add regularization:  Full loss = data loss + regularization loss
         weight = model.fc.weight.squeeze()
