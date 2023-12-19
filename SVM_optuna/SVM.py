@@ -9,7 +9,7 @@ import ast
 
 # ================ MODELS ================
 
-class SVM_pixel(torch.nn.Module) :
+class SVM_pixel(torch.nn.Module):
   """
   SVM_pixel class, support vector machine model classify single pixel
   into the class 0 or 1.
@@ -66,14 +66,26 @@ class SVM(torch.nn.Module):
 
 # ================ TRAINING FUNCTIONS ================
 
-def train_single_model(model,
-                       train_loader,
-                       num_pixel,
-                       num_epoch,
-                       device,
-                       weight_,
-                       param):
+def train_single_model(model, train_loader, num_pixel, num_epoch, device, weight_, param):
+    '''
+    Train a single model for a single pixel
 
+    Args:
+        model (torch.nn.Module): model to train
+        train_loader (torch.utils.data.DataLoader): training set
+        num_pixel (int): pixel number
+        num_epoch (int): number of epochs
+        device (torch.device): device to train on
+        weight_ (torch.Tensor): weight for the loss function
+        param (dict): hyperparameters
+
+    Returns:
+        loss_per_epoch (list): loss per epoch
+        acc_per_epoch (list): accuracy per epoch
+        wacc_per_epoch (list): weighted accuracy per epoch
+        f1_per_epoch (list): f1 score per epoch
+        lr_history (list): learning rate per epoch
+    '''
     #criterion, optimizer and scheduler
     criterion = torch.nn.MultiMarginLoss(weight=weight_.double())
 
@@ -162,14 +174,21 @@ def train_single_model(model,
 
     return loss_per_epoch, acc_per_epoch, wacc_per_epoch, f1_per_epoch, lr_history
 
-def train(full_model,
-          train_loader,
-          device,
-          num_epoch,
-          weights_, 
-          hyperparam
-          ) :
+def train(full_model, train_loader, device, num_epoch, weights_, hyperparam):
+  '''
+  Train the full model
 
+  Args:
+      full_model (torch.nn.Module): model to train
+      train_loader (torch.utils.data.DataLoader): training set
+      device (torch.device): device to train on
+      num_epoch (int): number of epochs
+      weights_ (torch.Tensor): weight for the loss function
+      hyperparam (pd.DataFrame): hyperparameters
+
+  Returns:
+      to_store (pd.DataFrame): training results
+  '''
   to_store = pd.DataFrame(columns=['Pixel n°',
                                    'Training loss',
                                    'Learning rate history',
@@ -202,8 +221,22 @@ def train(full_model,
 # ================ TEST FUNCTIONS ================
 
 #test functions
-def test_single_model(model, test_loader, num_pixel, device) :
-  ''' give the prediction of a single pixel'''
+def test_single_model(model, test_loader, num_pixel, device):
+  '''
+  Test a single model for a single pixel
+
+  Args:
+      model (torch.nn.Module): model to test
+      test_loader (torch.utils.data.DataLoader): test set
+      num_pixel (int): pixel number
+      device (torch.device): device to train on
+
+  Returns:
+      F1 (float): F1 score
+      Wacc (float): weighted accuracy
+      acc (float): accuracy
+  '''
+
   running_corrects =0
   running_wacc=0
   running_f1 =0
@@ -234,8 +267,19 @@ def test_single_model(model, test_loader, num_pixel, device) :
 
   return F1, Wacc, acc
 
-def test(trained_model, test_loader, outpath, device) : 
+def test(trained_model, test_loader, outpath, device): 
+  '''
+  Test the full model
 
+  Args:
+      trained_model (torch.nn.Module): model to test
+      test_loader (torch.utils.data.DataLoader): test set
+      outpath (str): path to save the plots
+      device (torch.device): device to train on
+
+  Returns:
+      to_store (pd.DataFrame): testing results
+  '''
   to_store = pd.DataFrame(columns=['Testing singles weighted accuracy', 'Testing singles accuracy', 'Testing singles F1'] )
 
   #test 1 : the single test over each pixel
@@ -276,6 +320,18 @@ def test(trained_model, test_loader, outpath, device) :
 # ================ ADDITIONNAL FUNCTIONS ================
 #resize function for the batches
 def resize_batch(batch_x, batch_y, num_pixel):
+  '''
+  Resize the batch to fit the model
+
+  Args:
+      batch_x (torch.Tensor): batch of data
+      batch_y (torch.Tensor): batch of labels
+      num_pixel (int): pixel number
+
+  Returns:
+      batch_x (torch.Tensor): resized batch of data
+      batch_y (torch.Tensor): resized batch of labels
+  '''
   #reshape x_batch
   batch_x= batch_x.flatten(2)
   shape0 = batch_x.shape[0]
@@ -294,7 +350,17 @@ def resize_batch(batch_x, batch_y, num_pixel):
 
   return batch_x, batch_y
 
-def balance_weight(labels) :
+def balance_weight(labels):
+  '''
+  Compute the weight for the loss function
+
+  Args:
+      labels (torch.Tensor): labels
+
+  Returns:
+      item (torch.Tensor): labels
+      alphas (torch.Tensor): weights
+  '''
   #finding the right weight
   labs = labels.flatten(1)
 
@@ -309,7 +375,15 @@ def balance_weight(labels) :
 
 #saving functions
 def save_trial(df_training, df_testing, param, path_to_save):
+  '''
+  Save the results of the training and testing
 
+  Args:
+      df_training (pd.DataFrame): training results
+      df_testing (pd.DataFrame): testing results
+      param (dict): hyperparameters
+      path_to_save (str): path to save the results
+  '''
   #add the parameters column
   df_param = pd.DataFrame.from_dict(param, orient='index')
 
@@ -325,7 +399,15 @@ def save_trial(df_training, df_testing, param, path_to_save):
   print('trials saved in /trials directory')
 
 #plotting and save functions
-def plot_training(Training_results, num_epochs, path_to_save) :
+def plot_training(Training_results, num_epochs, path_to_save):
+  '''
+  Plot the training results
+
+  Args:
+      Training_results (pd.DataFrame): training results
+      num_epochs (int): number of epochs
+      path_to_save (str): path to save the plots
+  '''
   #columns=['Pixel n°', 'Training loss','Learning rate history', 'Training accuracy','Training weighted accuracy']
 
   #plot the 25 training loss and accuracy over the epochs in a subplot + one point for the best accuracy
@@ -387,6 +469,13 @@ def plot_training(Training_results, num_epochs, path_to_save) :
   print('saving done in /trials/plots directory')
 
 def plot_testing(Testing_results, path_to_save):
+  '''
+  Plot the testing results
+
+  Args:
+      Testing_results (pd.DataFrame): testing results
+      path_to_save (str): path to save the plots
+  '''
   #columns= ['Testing singles weighted accuracy', 'Testing singles accuracy']
   #heat map 5x5 for Testing singles F1
 
@@ -420,7 +509,16 @@ def plot_testing(Testing_results, path_to_save):
 
   print('saving done in /trials/plots directory')
 
-def save_prediction(true_patterns, pred_patterns, outpath, i) :
+def save_prediction(true_patterns, pred_patterns, outpath, i):
+  '''
+  Save the prediction
+
+  Args:
+      true_patterns (torch.Tensor): true patterns
+      pred_patterns (torch.Tensor): predicted patterns
+      outpath (str): path to save the plots
+      i (int): pixel number
+  '''
   import os
 
   outpath = outpath + '/testing_pattern_example'
@@ -431,7 +529,17 @@ def save_prediction(true_patterns, pred_patterns, outpath, i) :
     filname = f'Pred_vs_true_n{i}'
     fig.savefig(os.path.join(outpath, filname))
 
-def plot_pattern(patterns) :
+def plot_pattern(patterns):
+  '''
+  Plot the patterns
+
+  Args:
+      patterns (list): list of patterns
+
+  Returns:
+      fig (matplotlib.figure.Figure): figure
+      ax (matplotlib.axes.Axes): axes
+  '''
   from matplotlib.colors import LogNorm
   fig, ax = plt.subplots(1, 2, figsize=(2*3,3))
 
@@ -444,8 +552,7 @@ def plot_pattern(patterns) :
 
   return fig, ax
 
-def heatmap(data, row_labels, col_labels, ax=None,
-            cbar_kw=None, cbarlabel="", **kwargs):
+def heatmap(data, row_labels, col_labels, ax=None, cbar_kw=None, cbarlabel="", **kwargs):
     """
     Create a heatmap from a numpy array and two lists of labels.
 
@@ -467,7 +574,6 @@ def heatmap(data, row_labels, col_labels, ax=None,
     **kwargs
         All other arguments are forwarded to `imshow`.
     """
-
     if ax is None:
         ax = plt.gca()
 
@@ -504,9 +610,7 @@ def heatmap(data, row_labels, col_labels, ax=None,
 
     return im, cbar
 
-def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
-                     textcolors=("black", "white"),
-                     threshold=None, **textkw):
+def annotate_heatmap(im, data=None, valfmt="{x:.2f}", textcolors=("black", "white"), threshold=None, **textkw):
     """
     A function to annotate a heatmap.
 
@@ -565,7 +669,23 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
 
 #======= OPTUNA HYPERPARAMTER TUNNING ======
 def find_hyperparam(path_to_save,device, weight_loss,input_size,o_train_loader, o_val_loader, num_epochs, n_trials, num_pixels = 25):
-  '''return a pd.serie hyperparam[num_pixel][hyperparameter] '''
+  '''
+  Find the hyperparameters
+
+  Args:
+      path_to_save (str): path to save the results
+      device (torch.device): device to train on
+      weight_loss (torch.Tensor): weight for the loss function
+      input_size (int): input size
+      o_train_loader (torch.utils.data.DataLoader): training set
+      o_val_loader (torch.utils.data.DataLoader): validation set
+      num_epochs (int): number of epochs
+      n_trials (int): number of trials
+      num_pixels (int): number of pixels
+
+  Returns:
+      to_return (pd.DataFrame): hyperparameters
+  '''
 
   optuna_result = pd.DataFrame(columns = ["Number of finished trials",
                                           "Number of pruned trials",
@@ -612,6 +732,22 @@ def find_hyperparam(path_to_save,device, weight_loss,input_size,o_train_loader, 
   return to_return
 
 def run_optuna(num_pixel, weight_, device, input_size, o_train_loader, o_val_loader, num_epochs, n_trials):
+    '''
+    Run the optuna hyperparameter tunning
+
+    Args:
+        num_pixel (int): pixel number
+        weight_ (torch.Tensor): weight for the loss function
+        device (torch.device): device to train on
+        input_size (int): input size
+        o_train_loader (torch.utils.data.DataLoader): training set
+        o_val_loader (torch.utils.data.DataLoader): validation set
+        num_epochs (int): number of epochs
+        n_trials (int): number of trials
+
+    Returns:
+        optuna_running (dict): optuna results
+    '''
     study = optuna.create_study(direction="maximize")
     study.optimize(lambda trial: objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_val_loader, num_epochs=num_epochs), n_trials=n_trials)
 
@@ -635,7 +771,22 @@ def run_optuna(num_pixel, weight_, device, input_size, o_train_loader, o_val_loa
     return optuna_running
 
 def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_val_loader, num_epochs):
+    '''
+    Objective function for the optuna hyperparameter tunning
 
+    Args:
+        trial (optuna.trial.Trial): trial
+        num_pixel (int): pixel number
+        weight_ (torch.Tensor): weight for the loss function
+        device (torch.device): device to train on
+        input_size (int): input size
+        o_train_loader (torch.utils.data.DataLoader): training set
+        o_val_loader (torch.utils.data.DataLoader): validation set
+        num_epochs (int): number of epochs
+
+    Returns:
+        ACC_ (float): balanced accuracy
+    '''
     #optimizer hyperparameters
     lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
     beta1 = trial.suggest_float("beta1", 0.8, 1, log=False)
