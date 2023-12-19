@@ -124,7 +124,7 @@ def train_single_model(model,
         outputs = model(batch_x)
 
         preds = model.predict_label(outputs)
-        loss = criterion(outputs, batch_y)
+        loss = criterion(outputs.flatten(), batch_y.flatten())
 
         # Add regularization:  Full loss = data loss + regularization loss
         weight = model.fc.weight.squeeze()
@@ -154,9 +154,9 @@ def train_single_model(model,
         running_loss.append(loss.cpu().item())
         running_corrects += torch.mean((preds == batch_y.data).float()).cpu()
         
-        wacc = balanced_accuracy_score(batch_y.view(-1).cpu(),preds.view(-1).cpu()) # Mean wacc on the batch
+        wacc = balanced_accuracy_score(batch_y.flatten().cpu(),preds.flatten().cpu()) # Mean wacc on the batch
         running_wacc += wacc
-        f1 = f1_score(batch_y.view(-1).cpu(),preds.view(-1).cpu()) # Mean f1 on the batch
+        f1 = f1_score(batch_y.flatten().cpu(),preds.flatten().cpu()) # Mean f1 on the batch
         running_f1 += f1
 
       #save the loss, accuracy, lr, wacc and f1 for each epoch
@@ -234,9 +234,9 @@ def test_single_model(model, test_loader, num_pixel, device) :
         preds = model.predict_label(outputs)
 
         running_corrects += torch.mean((preds == batch_y.data).float()).cpu()
-        wacc = balanced_accuracy_score(batch_y.view(-1).cpu(),preds.view(-1).cpu())
+        wacc = balanced_accuracy_score(batch_y.flatten().cpu(),preds.flatten().cpu())
         running_wacc += wacc
-        running_f1 += f1_score(batch_y.view(-1).cpu(),preds.view(-1).cpu())
+        running_f1 += f1_score(batch_y.flatten().cpu(),preds.flatten().cpu())
 
         f1 = f1_score(batch_y.cpu(), preds.cpu())
         running_f1 += f1
@@ -721,10 +721,10 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
           output = model(batch_x)
           pred = model.predict_label(output)
 
-          acc = balanced_accuracy_score(batch_y.view(-1).cpu(),pred.view(-1).cpu())
+          acc = balanced_accuracy_score(batch_y.flatten().cpu(),pred.flatten().cpu())
           ACC += acc
 
-          #f1 = f1_score(batch_y.view(-1).cpu(),pred.view(-1).cpu())
+          #f1 = f1_score(batch_y.flatten().cpu(),pred.flatten().cpu())
           #F1 += f1
 
       ACC_= ACC / len(o_val_loader.dataset)
