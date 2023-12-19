@@ -5,6 +5,15 @@ from torch.autograd import Variable
 
 
 def label_weights(target):
+    '''
+    Label weights for Focal Loss
+
+    Args: 
+        target (torch.tensor): tensor of labels
+
+    Returns:
+        weights (torch.tensor): tensor of weights for each label
+    '''
     N = target.shape[0]*25
     freq_min = torch.sum(target == 1) / N
     weights = torch.where(target==0, freq_min.float(), (1-freq_min).float())

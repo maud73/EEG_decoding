@@ -3,44 +3,54 @@ import numpy as np
 from sklearn.metrics import f1_score, balanced_accuracy_score
 
 def predict(output):
-    """
-    Predicts each pixel's class (i.e. the decoded visual stimulus) from the UNet's output
+    '''
+    Predict the stimulus from the output of the model
 
     Args:
-        output (Tensor): n_batch, depth 2, height and width 5 (output of the U-Net)
+        output (Tensor): output of the model (n_batch, height and width 5)
 
     Returns:
-        pred (Tensor): n_batch, height and width 5
-    """
+        pred (Tensor): predicted stimulus (n_batch, height and width 5)
+    '''
     pred = torch.argmax(output,dim=1)
     return pred
 
 def accuracy(prediction, target):
-    """
-    Computes the batch accuracy of the prediction
+    '''
+    Compute the accuracy of the model
 
     Args:
         prediction (Tensor): predicted stimulus (n_batch, height and width 5)
-        target (Tensor): target stimulus (n_batch, height and width 5)
+        target (Tensor): true stimulus (n_batch, height and width 5)
 
     Returns:
-        accuracy (float)
-    """
+        acc (float): accuracy
+    '''
     N = prediction.shape[0]
     temp = torch.all(torch.all(torch.eq(prediction, target), dim=-1), dim=-1) # Dimension n_batch
     acc = torch.sum(temp)
     return (acc / N).cpu()
 
 def train_epoch(model, optimizer, scheduler, criterion, train_loader, epoch, device):
-    """
-    @param model: torch.nn.Module
-    @param criterion: torch.nn.modules.WeightedFocalLoss
-    @param dataset_train: torch.utils.data.DataLoader
-    @param dataset_test: torch.utils.data.DataLoader
-    @param optimizer: torch.optim.Optimizer (AdamW)
-    @param scheduler: torch.optim.lr_scheduler (CosineAnnealingLR(optimizer, T_max=(len(train_loader.dataset) * num_epochs) // train_loader.batch_size,)
-    @device:
-    """
+    '''
+    Train the model for one epoch
+
+    Args:
+        model (torch.nn.Module): model to train
+        optimizer (torch.optim): optimizer
+        scheduler (torch.optim.lr_scheduler): scheduler
+        criterion (torch.nn.Module): loss function
+        train_loader (torch.utils.data.DataLoader): training set
+        epoch (int): current epoch
+        device (str): device to use
+
+    Returns:
+        loss_history (list): loss history of the epoch
+        accuracy_history (list): accuracy history of the epoch
+        soft_accuracy_history (list): soft accuracy history of the epoch
+        f1_history (list): F1 score history of the epoch
+        lr_history (list): learning rate history of the epoch
+    '''
     model.train()
     loss_history = []
     accuracy_history = []
@@ -91,16 +101,27 @@ def train_epoch(model, optimizer, scheduler, criterion, train_loader, epoch, dev
     return loss_history, accuracy_history, soft_accuracy_history, f1_history, lr_history
 
 
-def run_training(
-    model,
-    optimizer,
-    scheduler,
-    criterion,
-    num_epochs,
-    train_loader,
-    device="cuda"
-):
+def run_training(model, optimizer, scheduler, criterion, num_epochs, train_loader, device="cuda"):
+    '''   
+    Train the model
 
+    Args:
+        model (torch.nn.Module): model to train
+        optimizer (torch.optim): optimizer
+        scheduler (torch.optim.lr_scheduler): scheduler
+        criterion (torch.nn.Module): loss function
+        num_epochs (int): number of epochs
+        train_loader (torch.utils.data.DataLoader): training set
+        device (str): device to use
+
+    Returns:
+        train_acc (float): accuracy on the training set
+        lr_history (list): learning rate history
+        train_loss_history (list): loss history
+        train_acc_history (list): accuracy history
+        train_soft_acc_history (list): soft accuracy history
+        train_f1_history (list): F1 score history
+    '''
     # ===== Model =====
     model = model.to(device=device)
 

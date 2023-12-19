@@ -4,6 +4,15 @@ import matplotlib.pyplot as plt
 
 @torch.no_grad()
 def test(best_model, test_loader, file_path):
+    '''
+    Test the model on the test set and plot the pixel-wise mean accuracy
+    and F1 score.
+
+    Args:
+        best_model (torch.nn.Module): trained model
+        test_loader (torch.utils.data.DataLoader): test set
+        file_path (str): path to save the plot  
+    '''
     soft_acc_test_history = torch.zeros(1,5,5)
     for data, target in test_loader:
         data = data.to('cuda')

@@ -3,6 +3,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 def he_init(layer):
+  '''
+    He initialization for the weights of the layers
+
+    Args:
+        layer (torch.nn.Module): layer to initialize
+  '''
   if isinstance(layer, nn.Conv2d):
     nn.init.kaiming_normal_(layer.weight, mode='fan_in', nonlinearity='relu')
 
@@ -23,7 +29,6 @@ class DoubleConv(nn.Module):
 
     def forward(self,x):
       return self.double_conv(x)
-
 
 class Down(nn.Module):
     """Consists of MaxPool then DoubleConv"""
@@ -60,7 +65,6 @@ class Up(nn.Module):
         x = torch.cat([x2, x1], dim=1)
         return self.conv(x)
 
-
 class OutConv(nn.Module):
     """Consists of transpose convolution then double conv"""
 
@@ -71,7 +75,6 @@ class OutConv(nn.Module):
     def forward(self, x):
         return self.conv(x)
     
-
 class UNet(nn.Module):
     def __init__(self, n_channels, n_classes): # n_classes should be 2, because of binary classification : foreground and background class (gray or black)
         super(UNet, self).__init__()
@@ -105,7 +108,6 @@ class UNet(nn.Module):
         logits = self.outc(x) # 2 channels containing the probabilities of gray and black
         return logits
     
-
 class UNet_dropout(nn.Module):
     def __init__(self, n_channels, n_classes, p_dropout): # n_classes should be 2, because of binary classification : foreground and background class (gray or black)
         super(UNet_dropout, self).__init__()

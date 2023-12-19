@@ -6,6 +6,17 @@ from loss import FocalLoss
 from sklearn.metrics import f1_score
 
 def test_f1(model, val_loader_hyp, device):
+    '''
+    Test the model on the validation set and compute the F1 score
+
+    Args:
+        model (torch.nn.Module): trained model
+        val_loader_hyp (torch.utils.data.DataLoader): validation set
+        device (str): device to use
+
+    Returns:
+        f1 (float): F1 score
+    '''
     f1 = 0
     with torch.no_grad():
         for data, target in val_loader_hyp:
@@ -20,16 +31,19 @@ def test_f1(model, val_loader_hyp, device):
 # Edited from https://github.com/optuna/optuna-examples/blob/main/pytorch/pytorch_simple.py and https://github.com/elena-ecn/optuna-optimization-for-PyTorch-CNN/blob/main/optuna_optimization.py
 
 def objective(trial, device, train_loader_hyp, val_loader_hyp, num_epochs):
-    """Objective function to be optimized by Optuna
+    '''
+    Objective function for the hyperparameter optimization
 
-    Hyperparameters to be optimized: learning algorithm, learning rate, weight decay,
-    betas (control the exponential decay rate of the running mean and variance), focal parameter of the loss
+    Args:
+        trial (optuna.trial): trial
+        device (str): device to use
+        train_loader_hyp (torch.utils.data.DataLoader): training set
+        val_loader_hyp (torch.utils.data.DataLoader): validation set
+        num_epochs (int): number of epochs
 
-    Inputs:
-        - trial (optuna.trial._trial.Trial): Optuna trial
     Returns:
-        - f1 score (float): The test F1 score. Parameter to be maximized.
-    """
+        f1 (float): F1 score
+    '''
     print("Enter objective")
     # Generate the model
     model = UNet(n_channels=1, n_classes=2).to(device)
