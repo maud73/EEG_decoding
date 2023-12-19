@@ -170,3 +170,7 @@ draft/
 *.zip
 test_*
 *.pkl
+*.pth
+*.npy
+# For macOS
+.DS_Store

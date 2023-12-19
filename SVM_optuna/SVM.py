@@ -5,13 +5,14 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import optuna
 import os
+import ast
 
 # ================ MODELS ================
 
 class SVM_pixel(torch.nn.Module) :
   """
   SVM_pixel class, support vector machine model classify single pixel
-  into the class -1 or 1.
+  into the class 0 or 1.
   """
   def __init__(self,  input_size, num_classes=2):
     super(SVM_pixel, self).__init__()
@@ -26,8 +27,8 @@ class SVM_pixel(torch.nn.Module) :
 
   def predict_label(self, outputs):
     _, preds = torch.max(outputs, 1)
-    mask = [preds==0]
-    preds[mask]= -1
+    #mask = [preds==0]
+    #preds[mask]= -1
     preds = preds.to(torch.int32)
     return preds
 
@@ -70,24 +71,34 @@ def train_single_model(model,
                        num_pixel,
                        num_epoch,
                        device,
-                       weight_,
                        param):
 
     #crit, optim and scheduler
-    criterion = torch.nn.MultiLabelSoftMarginLoss(weight = weight_) # torch.nn.SoftMarginLoss()
+    #criterion =  torch.nn.HingeEmbeddingLoss(param['loss_margin']) #MultiLabelSoftMarginLoss(weight = weight_) 
+    criterion = torch.nn.MultiMarginLoss()
 
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=param['lr'],
                                  betas=(param['beta1'], param['beta2']),
-                                 eps=1e-08,
-                                 weight_decay=param['weight_decay'])
+                                 eps=1e-08,)
+    
+    scheduler_string = param['scheduler']
+    scheduler_dict = ast.literal_eval(scheduler_string)
 
-    scheduler= torch.optim.lr_scheduler.StepLR(optimizer, step_size=param['step_size'], gamma=param['gamma'])
+    if scheduler_dict['scheduler'] == 'StepLR':
+       scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=scheduler_dict['step_size'], gamma=scheduler_dict['gamma'])
+
+    
+    if scheduler_dict['scheduler'] == 'CosineAnnealingLR':
+      scheduler= torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer,
+            T_max=(len(train_loader.dataset) * num_epoch) // train_loader.batch_size,
+            eta_min=scheduler_dict['eta_min'])
+      
 
     #regularization parameters
-    reg_type = param['reg_type']
+    #reg_type = param['reg_type']
     reg_term = param['reg_term']
-
 
     loss_per_epoch = []
     acc_per_epoch = []
@@ -117,42 +128,45 @@ def train_single_model(model,
 
         # Add regularization:  Full loss = data loss + regularization loss
         weight = model.fc.weight.squeeze()
+        loss += reg_term * torch.sum(weight * weight)
 
+        '''
         if reg_type == 'L1':  # add L1 (LASSO - Least Absolute Shrinkage and Selection Operator)
                                                         # loss which leads to sparsity.
             loss += reg_term * torch.sum(torch.abs(weight))
 
         elif reg_type == 'L2':   # add L2 (Ridge) loss
             loss += reg_term * torch.sum(weight * weight)
+        '''
+
+        '''
+        if torch.isnan(torch.any(weight)) : 
+           print('NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN')
+
+        '''
 
         #backward and optimize
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         scheduler.step()
-
-        ## DEBUG
-        if loss.isnan():
-           print("loss is nan")
-
-        #running_loss += loss.cpu().item() #* batch_x.size(0)
+          
         running_loss.append(loss.cpu().item())
         running_corrects += torch.mean((preds == batch_y.data).float()).cpu()
-        #wacc = accW(batch_y.cpu(), preds.cpu(), weight_.cpu())
+        
         wacc = balanced_accuracy_score(batch_y.view(-1).cpu(),preds.view(-1).cpu()) # Mean wacc on the batch
         running_wacc += wacc
         f1 = f1_score(batch_y.view(-1).cpu(),preds.view(-1).cpu()) # Mean f1 on the batch
         running_f1 += f1
 
-
       #save the loss, accuracy, lr, wacc and f1 for each epoch
+      lr_history.append(scheduler.get_last_lr()[0])
       running_loss = torch.nanmean(torch.tensor(running_loss))
       loss_per_epoch.append(running_loss)
       acc_per_epoch.append(running_corrects / len(train_loader))
       wacc_per_epoch.append(running_wacc / len(train_loader))
       f1_per_epoch.append(running_f1 / len(train_loader))
 
-      lr_history.append(scheduler.get_last_lr()[0])
 
       if epoch%100 ==0 : #plot info only every 100 epochs
         print(f'Epoch: {epoch}',
@@ -166,7 +180,6 @@ def train_single_model(model,
 def train(full_model,
           train_loader,
           device,
-          weights_,
           num_epoch,
           hyperparam
           ) :
@@ -180,34 +193,33 @@ def train(full_model,
 
   for i, model in enumerate(full_model.models):
     print('Pixel ', i )
-    weight = weights_[i].to(device)
+    #weight = weights_[i].to(device)
 
     loss_per_epoch, acc_per_epoch, wacc_per_epoch, f1_per_epoch, lr_history = train_single_model(model,
                                                                                    train_loader,
                                                                                    i,
                                                                                    num_epoch,
                                                                                    device, 
-                                                                                   weight, 
                                                                                    hyperparam.iloc[i])
 
     #Store
-    to_store.loc[len(to_store.index)] =  [i, loss_per_epoch,lr_history,acc_per_epoch, wacc_per_epoch, f1_per_epoch]
+    to_store.loc[len(to_store.index)] =  [i, loss_per_epoch, acc_per_epoch, wacc_per_epoch, f1_per_epoch, lr_history]
 
-    #save the model
-    torch.save(full_model, 'SVMmodel.pth')
+  #save the model
+  torch.save(full_model, 'SVMmodel.pth')
 
-    print('the model is saved under SVMmodel.pth!')
+  print('the model is saved under SVMmodel.pth!')
 
   return to_store
 
 # ================ TEST FUNCTIONS ================
 
 #test functions
-def test_single_model(model, test_loader, num_pixel, weight, device) :
+def test_single_model(model, test_loader, num_pixel, device) :
   ''' give the prediction of a single pixel'''
-  running_corrects = 0
-  running_wacc = 0
-  running_f1 = 0
+  running_corrects =0
+  running_wacc=0
+  running_f1 =0
   with torch.no_grad():
     for batch_x, batch_y in test_loader:
 
@@ -222,38 +234,41 @@ def test_single_model(model, test_loader, num_pixel, weight, device) :
         preds = model.predict_label(outputs)
 
         running_corrects += torch.mean((preds == batch_y.data).float()).cpu()
-        #wacc = accW(batch_y.cpu(), preds.cpu(), weight.cpu())
-        wacc = balanced_accuracy_score(batch_y.view(-1).cpu(),preds.view(-1).cpu()) # Mean wacc on the batch
+        wacc = balanced_accuracy_score(batch_y.view(-1).cpu(),preds.view(-1).cpu())
         running_wacc += wacc
         running_f1 += f1_score(batch_y.view(-1).cpu(),preds.view(-1).cpu())
 
+        f1 = f1_score(batch_y.cpu(), preds.cpu())
+        running_f1 += f1
+
     acc = running_corrects / len(test_loader)
-    wacc = running_wacc / len(test_loader)
-    f1 = running_f1 / len(test_loader)
+    Wacc = running_wacc / len(test_loader)
+    F1 = running_f1/len(test_loader)
 
-  return acc, wacc, f1
+  return F1, Wacc, acc
 
-def test(trained_model, test_loader, outpath,weights, device) : 
+def test(trained_model, test_loader, outpath, device) : 
 
-  to_store = pd.DataFrame(columns=['Testing singles weighted accuracy', 'Testing singles accuracy'])
+  to_store = pd.DataFrame(columns=['Testing singles weighted accuracy', 'Testing singles accuracy', 'Testing singles F1'] )
 
   #test 1 : the single test over each pixel
   wacc_single = []
-  acc_single = []
   f1_single = []
+  acc_single =[]
 
   for i, model in enumerate(trained_model.models) :
-    acc, wacc, f1 = test_single_model(model, test_loader, i, weights[i], device)
+    f1, wacc, acc = test_single_model(model, test_loader, i, device)
+    f1_single.append(f1)
     wacc_single.append(wacc)
     acc_single.append(acc)
     f1_single.append(f1)
 
   to_store['Testing singles weighted accuracy'] = wacc_single
   to_store['Testing singles accuracy'] = acc_single
-  to_store['Testing singles f1 score'] = f1_single
-
+  to_store['Testing singles F1'] = f1_single
+  i = 0
   with torch.no_grad():
-
+  
     for batch_x, batch_y in test_loader:
         batch_x = batch_x.flatten(2)
         batch_y = batch_y.flatten(1)
@@ -262,10 +277,12 @@ def test(trained_model, test_loader, outpath,weights, device) :
         batch_y = batch_y.to(device)
 
         outputs = trained_model(batch_x)
+        i+=1
+        if i%100 ==0 :
+          pred_pattern = trained_model.predict_pattern(outputs)
+          save_prediction(batch_y.cpu(), pred_pattern.cpu(), outpath, i) 
 
-        pred_pattern = trained_model.predict_pattern(outputs)
-        save_prediction(batch_y.cpu(), pred_pattern.cpu(), outpath) 
-
+  print('saving example pattern into trials/testing_patterns_example')
   return to_store
 
 # ================ ADDITIONNAL FUNCTIONS ================
@@ -302,7 +319,7 @@ def balance_weight(labels) :
 
   return item, alphas
 
-#metric
+#metric not used
 def accW(true, pred, weight):
   w=[]
   for y in true :
@@ -343,6 +360,8 @@ def plot_training(Training_results, num_epochs, path_to_save) :
   fig3.suptitle('Training weighted accuracy', fontsize=40)
   fig4, axs4 = plt.subplots(5, 5, figsize=(30,30))
   fig4.suptitle('Learning rate history', fontsize=40)
+  fig5, axs5 = plt.subplots(5, 5, figsize=(30,30))
+  fig5.suptitle('Training F1 score', fontsize=40)
 
   #x axis are the nb of epochs
   x = np.linspace(0,  num_epochs, num_epochs)
@@ -372,6 +391,10 @@ def plot_training(Training_results, num_epochs, path_to_save) :
     #'Learning rate history'
     axs4[n,m].plot(x, pixel[2])
 
+    #'F1 score'
+    axs5[n,m].plot(x, pixel[5])
+
+
   #save plot into trials directory (same as the csv files)
   outpath = path_to_save + '/plots'
 
@@ -381,7 +404,8 @@ def plot_training(Training_results, num_epochs, path_to_save) :
   fig1.savefig(os.path.join(outpath,"Training_loss.png"))
   fig2.savefig(os.path.join(outpath,"Training_accuracy.png"))
   fig3.savefig(os.path.join(outpath, "Training_weighted_accuracy.png"))
-  fig4.savefig(os.path.join(outpath, "Learning_rate_history"))
+  fig4.savefig(os.path.join(outpath, "Training_Learning_rate_history"))
+  fig5.savefig(os.path.join(outpath, "Training_F1_score"))
 
   print('saving done in /trials/plots directory')
 
@@ -390,50 +414,45 @@ def plot_testing(Testing_results, path_to_save):
   #heat map 5x5 for Testing singles F1
 
   Wacc = Testing_results['Testing singles weighted accuracy'].to_numpy(dtype = np.float64).reshape((5,5))
-  Acc = Testing_results['Testing singles accuracy'].to_numpy(dtype = np.float64).reshape((5,5))
+  f1 = Testing_results['Testing singles F1'].to_numpy(dtype = np.float64).reshape((5,5))
+  acc = Testing_results['Testing singles accuracy'].to_numpy(dtype = np.float64).reshape((5,5))
 
   fig1, ax1 = plt.subplots()
-
-  im, cbar = heatmap(Wacc, ['0', '1', '2', '3', '4'], ['0', '1', '2', '3', '4'], ax=ax1,
-                   cmap="YlGn", cbarlabel="F1 per pixel range ")
-
+  im, cbar = heatmap(Wacc, [], [], ax=ax1,
+                   cmap="YlGn", cbarlabel="Balanced accuracy")
   texts = annotate_heatmap(im, valfmt="{x:.4f}")
-
-  fig1.suptitle('Testing weighted accuracy', fontsize=16)
 
   fig2, ax2 = plt.subplots()
-
-  im, cbar = heatmap(Acc, ['0', '1', '2', '3', '4'], ['0', '1', '2', '3', '4'], ax=ax2,
-                   cmap="YlGn", cbarlabel="accuracy per pixel range")
-
+  im, cbar = heatmap(f1, [], [], ax=ax2,
+                   cmap="YlGn", cbarlabel="F1 score")
   texts = annotate_heatmap(im, valfmt="{x:.4f}")
 
-  fig2.suptitle('Testing accuracy score', fontsize=16)
-
+  fig3, ax3 = plt.subplots()
+  im, cbar = heatmap(acc, [], [], ax=ax3,
+                   cmap="YlGn", cbarlabel="Accuracy")
+  texts = annotate_heatmap(im, valfmt="{x:.4f}")
+ 
   #save plot into trials directory (same as the csv files)
   outpath = path_to_save +'/plots'
   import os
   os.makedirs(outpath, exist_ok=True)
 
   fig1.savefig(os.path.join(outpath,"Testing_wacc.png"))
-  fig2.savefig(os.path.join(outpath,"Testing_acc.png"))
+  fig2.savefig(os.path.join(outpath,"Testing_f1.png"))
+  fig3.savefig(os.path.join(outpath,"Testing_acc.png"))
 
   print('saving done in /trials/plots directory')
 
-def save_prediction(true_patterns, pred_patterns, outpath) :
+def save_prediction(true_patterns, pred_patterns, outpath, i) :
   import os
 
   outpath = outpath + '/testing_pattern_example'
   os.makedirs(outpath, exist_ok=True)
-  i = 0
   for true_pattern, pred_pattern in zip(true_patterns, pred_patterns) :
 
     fig, ax = plot_pattern([true_pattern, pred_pattern])
-    i+= 1
     filname = f'Pred_vs_true_n{i}'
     fig.savefig(os.path.join(outpath, filname))
-
-  print('saving pattern into trials/testing_patterns_example')
 
 def plot_pattern(patterns) :
   from matplotlib.colors import LogNorm
@@ -483,15 +502,16 @@ def heatmap(data, row_labels, col_labels, ax=None,
 
     # Create colorbar
     cbar = ax.figure.colorbar(im, ax=ax, **cbar_kw)
-    cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
+    cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom", fontsize=21)
 
-    # Show all ticks and label them with the respective list entries.
-    ax.set_xticks(np.arange(data.shape[1]), labels=col_labels)
-    ax.set_yticks(np.arange(data.shape[0]), labels=row_labels)
+    # no ticks 
+    ax.set_yticks(np.arange(len(data)), labels=[])
+    ax.set_xticks(np.arange(len(data)), labels=[])
 
     # Let the horizontal axes labeling appear on top.
-    ax.tick_params(top=True, bottom=False,
-                   labeltop=True, labelbottom=False)
+    ax.tick_params(top=False, bottom=False,
+                   labeltop=False, labelbottom=False)
+    
 
     # Rotate the tick labels and set their alignment.
     plt.setp(ax.get_xticklabels(), rotation=-30, ha="right",
@@ -576,7 +596,7 @@ def find_hyperparam(path_to_save,device, weight_loss,input_size,o_train_loader, 
                                           "Best accuracy",
                                           "Param"])
 
-  to_return = pd.DataFrame(columns = ['lr', 'beta1', 'beta2', 'weight_decay', 'reg_term', 'reg_type', 'step_size', 'gamma'])
+  to_return = pd.DataFrame(columns = ['lr', 'beta1', 'beta2', 'weight_decay', 'reg_term', 'scheduler'])
   for i in range(num_pixels):
     print('Pixel n°',i)
     weight = weight_loss[i].to(device)
@@ -588,15 +608,19 @@ def find_hyperparam(path_to_save,device, weight_loss,input_size,o_train_loader, 
                                                     df["Number of complete trials"],
                                                     df["Best accuracy"],
                                                     df["Param"]]
+    
+    if df['Param']['scheduler'] == 'CosineAnnealingLR' : 
+       scheduler_dict = {'scheduler' : df['Param']['scheduler'], 'eta_min' : df['Param']['eta_min']}
+    else :
+       scheduler_dict = {'scheduler' : df['Param']['scheduler'], 'gamma' : df['Param']['gamma'],'step_size': df['Param']['step_size']}
+    
 
     to_return.loc[len(to_return.index)] = [df["Param"]['lr'],
                                            df["Param"]["beta1"],
                                            df["Param"]["beta2"],
                                            df["Param"]['weight_decay'],
                                            df["Param"]['reg_term'],
-                                           df["Param"]['reg_type'],
-                                           df["Param"]['step_size'],
-                                           df["Param"]['gamma']]
+                                           scheduler_dict]
 
   path = path_to_save
 
@@ -643,18 +667,30 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
 
     #regularization hyperparameters
     reg_term = trial.suggest_float('reg_term', 1e-5, 1e-1, log=True)
-    reg_type = trial.suggest_categorical("reg_type", ["L1", "L2"])
-
-    #scheduler hyperparameters
-    step_size = trial.suggest_float('step_size', 5, 10)
-    gamma = trial.suggest_float('gamma', 1e-5, 1e-1, log=True)
+  
+    #loss
+    #loss_margin = trial.suggest_float('loss_margin', 0, 5)
 
     model = SVM_pixel(input_size).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=(beta1, beta2), eps=1e-08, weight_decay=weight_decay)
-    criterion = torch.nn.MultiLabelSoftMarginLoss(weight = weight_)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
-
+    #criterion = torch.nn.MultiLabelSoftMarginLoss(weight = weight_)
+    # criterion = torch.nn.HingeEmbeddingLoss(margin = loss_margin)
+    criterion = torch.nn.MultiMarginLoss()
+    
+    #scheduler 
+    scheduler_name = trial.suggest_categorical('scheduler', ['StepLR', 'CosineAnnealingLR'])
+    if scheduler_name == 'StepLR':
+        step_size = trial.suggest_float('step_size', 5, 10)
+        gamma = trial.suggest_float('gamma', 1e-5, 1e-1, log=True)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
+    elif scheduler_name == 'CosineAnnealingLR':
+        eta_min = trial.suggest_float('eta_min', 1e-7, 1e-5, log=True)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer,
+            T_max=(len(o_train_loader.dataset) * num_epochs) // o_train_loader.batch_size,
+            eta_min=eta_min
+        )
     # Training of the model.
     for epoch in range(num_epochs):
       model.train()
@@ -667,12 +703,7 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
 
         # Add regularization:  Full loss = data loss + regularization loss
         weight = model.fc.weight.squeeze()
-        if reg_type == 'L1':  # add L1 (LASSO - Least Absolute Shrinkage and Selection Operator)
-                                                        # loss which leads to sparsity.
-          loss += reg_term * torch.sum(torch.abs(weight))
-
-        elif reg_type == 'L2':   # add L2 (Ridge) loss
-          loss += reg_term * torch.sum(weight * weight)
+        loss += reg_term * torch.sum(weight * weight)
 
         optimizer.zero_grad()
         loss.backward()
@@ -681,8 +712,8 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
 
       # Validation of the model.
       model.eval()
-      #ACC = 0
-      F1 = 0
+      ACC = 0
+      #F1 = 0
       with torch.no_grad():
         for batch_x, batch_y in  o_val_loader:
           batch_x, batch_y = resize_batch(batch_x, batch_y,  num_pixel)
@@ -690,19 +721,19 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
           output = model(batch_x)
           pred = model.predict_label(output)
 
-          #acc = balanced_accuracy_score(batch_y.view(-1).cpu(),pred.view(-1).cpu())
-          #ACC += acc
+          acc = balanced_accuracy_score(batch_y.view(-1).cpu(),pred.view(-1).cpu())
+          ACC += acc
 
-          f1 = f1_score(batch_y.view(-1).cpu(),pred.view(-1).cpu())
-          F1 += f1
+          #f1 = f1_score(batch_y.view(-1).cpu(),pred.view(-1).cpu())
+          #F1 += f1
 
-      #ACC_= ACC / len(o_val_loader.dataset)
-      F1 /= len(o_val_loader.dataset) 
-      trial.report(F1, epoch)
+      ACC_= ACC / len(o_val_loader.dataset)
+      #F1 /= len(o_val_loader.dataset) 
+      trial.report(ACC_, epoch)
 
       # Handle pruning based on the intermediate value.
       if trial.should_prune():
         raise optuna.exceptions.TrialPruned()
 
-    return F1
+    return ACC_
 
