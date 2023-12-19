@@ -109,7 +109,6 @@ def train_single_model(model, train_loader, num_pixel, num_epoch, device, weight
             eta_min=scheduler_dict['eta_min'])
 
     #regularization parameters
-    #reg_type = param['reg_type']
     reg_term = param['reg_term']
 
     loss_per_epoch = []
@@ -795,16 +794,11 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
 
     #regularization hyperparameters
     reg_term = trial.suggest_float('reg_term', 1e-5, 1e-1, log=True)
-  
-    #loss
-    #loss_margin = trial.suggest_float('loss_margin', 0, 5)
 
     model = SVM_pixel(input_size).to(device)
-
+  
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=(beta1, beta2), eps=1e-08, weight_decay=weight_decay)
-    #criterion = torch.nn.MultiLabelSoftMarginLoss(weight = weight_)
-    # criterion = torch.nn.HingeEmbeddingLoss(margin = loss_margin)
-    criterion = torch.nn.MultiMarginLoss()
+    criterion = torch.nn.MultiMarginLoss(weight=weight_.double())
     
     #scheduler 
     scheduler_name = trial.suggest_categorical('scheduler', ['StepLR', 'CosineAnnealingLR'])
@@ -855,7 +849,7 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
           #f1 = f1_score(batch_y.flatten().cpu(),pred.flatten().cpu())
           #F1 += f1
 
-      ACC_= ACC / len(o_val_loader.dataset)
+      ACC_= ACC / len(o_val_loader)
       #F1 /= len(o_val_loader.dataset) 
       trial.report(ACC_, epoch)
 
