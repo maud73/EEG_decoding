@@ -16,7 +16,7 @@ def main() :
     num_epochs = 5 #50 
     batch_size = 32 
 
-    file_path = 'resampled_epochs_subj_0.pkl'
+    file_path = 'data/resampled_epochs_subj_0.pkl'
     path_to_save = 'Trials'
 
     epochs, labels = get_data(file_path, convention_neg=False)
