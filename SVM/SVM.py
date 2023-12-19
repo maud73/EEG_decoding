@@ -12,7 +12,7 @@ import ast
 class SVM_pixel(torch.nn.Module) :
   """
   SVM_pixel class, support vector machine model classify single pixel
-  into the class -1 or 1.
+  into the class 0 or 1.
   """
   def __init__(self,  input_size, num_classes=2):
     super(SVM_pixel, self).__init__()
@@ -27,8 +27,8 @@ class SVM_pixel(torch.nn.Module) :
 
   def predict_label(self, outputs):
     _, preds = torch.max(outputs, 1)
-    mask = [preds==0]
-    preds[mask]= -1
+    #mask = [preds==0]
+    #preds[mask]= -1
     preds = preds.to(torch.int32)
     return preds
 
@@ -74,7 +74,8 @@ def train_single_model(model,
                        param):
 
     #crit, optim and scheduler
-    criterion =  torch.nn.HingeEmbeddingLoss(param['loss_margin']) #MultiLabelSoftMarginLoss(weight = weight_) 
+    #criterion =  torch.nn.HingeEmbeddingLoss(param['loss_margin']) #MultiLabelSoftMarginLoss(weight = weight_) 
+    criterion = torch.nn.MultiMarginLoss()
 
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=param['lr'],
@@ -316,7 +317,7 @@ def balance_weight(labels) :
 
   return item, alphas
 
-#metric
+#metric not used
 def accW(true, pred, weight):
   w=[]
   for y in true :
@@ -593,7 +594,7 @@ def find_hyperparam(path_to_save,device, weight_loss,input_size,o_train_loader, 
                                           "Best accuracy",
                                           "Param"])
 
-  to_return = pd.DataFrame(columns = ['lr', 'beta1', 'beta2', 'weight_decay', 'reg_term', 'scheduler', 'loss_margin'])
+  to_return = pd.DataFrame(columns = ['lr', 'beta1', 'beta2', 'weight_decay', 'reg_term', 'scheduler'])
   for i in range(num_pixels):
     print('Pixel n°',i)
     weight = weight_loss[i].to(device)
@@ -617,8 +618,7 @@ def find_hyperparam(path_to_save,device, weight_loss,input_size,o_train_loader, 
                                            df["Param"]["beta2"],
                                            df["Param"]['weight_decay'],
                                            df["Param"]['reg_term'],
-                                           scheduler_dict,
-                                           df['Param']['loss_margin']]
+                                           scheduler_dict]
 
   path = path_to_save
 
@@ -667,13 +667,14 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
     reg_term = trial.suggest_float('reg_term', 1e-5, 1e-1, log=True)
   
     #loss
-    loss_margin = trial.suggest_float('loss_margin', 0, 5)
+    #loss_margin = trial.suggest_float('loss_margin', 0, 5)
 
     model = SVM_pixel(input_size).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=(beta1, beta2), eps=1e-08, weight_decay=weight_decay)
     #criterion = torch.nn.MultiLabelSoftMarginLoss(weight = weight_)
-    criterion = torch.nn.HingeEmbeddingLoss(margin = loss_margin)
+    # criterion = torch.nn.HingeEmbeddingLoss(margin = loss_margin)
+    criterion = torch.nn.MultiMarginLoss()
     
     #scheduler 
     scheduler_name = trial.suggest_categorical('scheduler', ['StepLR', 'CosineAnnealingLR'])

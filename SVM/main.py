@@ -18,7 +18,7 @@ def main() :
   file_path = 'resampled_epochs_subj_0.pkl'
   path_to_save = 'Trials'
 
-  epochs, labels = get_data(file_path, convention_neg=True)
+  epochs, labels = get_data(file_path, convention_neg=False)
   train_loader, test_loader = get_dataloaders(epochs[:100], labels[:100], batch_size, test_size, return_val_set=False)
   
   # === Find the ratio that caracterize the balancy between the class ===
