@@ -5,9 +5,28 @@ import pickle
 from tune_functions import objective
 from Data_processing import get_data, get_dataloaders, get_valset, get_optuna_dataloaders
 
+"""Pipeline for Hyperparameter Optimization Using Optuna.
+
+1. Load Data:
+    - Loads and preprocesses EEG data.
+
+2. Optuna Hyperparameter Optimization:
+    - Sets Optuna parameters: number of epochs per trial, the number of trials, the split factor.
+    - Generates data loaders and splits the validation set into pseudo-train and validation sets for Optuna.
+
+3. Optuna Study Execution:
+    - Builds and executes an Optuna study with the specified number of trials.
+    - Maximizes the objective function using the Optuna study.
+
+4. Results and Storage:
+    - Collects information about pruned and completed trials.
+    - Saves the best trial's hyperparameters along with its corresponding F1 score.
+
+Note: the seeds were not fixed prior to hyperparameter tuning. Exact reproducibility may be impaired.
+"""
+
 def main():
-    print("Start main")
-    # Load the data
+    # Load the data and set up parameters
     epochs, labels = get_data(file_path='data/resampled_epochs_subj_0.pkl')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
@@ -33,7 +52,6 @@ def main():
     print("Start Optuna")
     
     # Build and run the study
-
     study = optuna.create_study(direction='maximize')
     study.optimize(lambda trial: objective(trial, device, train_loader_hyp, val_loader_hyp, num_epochs), n_trials=n_trials)
     
@@ -51,6 +69,6 @@ def main():
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     with open(file_path, 'wb') as fp:
         pickle.dump(best_params, fp)
-    print("Saved and finished")
+
 if __name__ == "__main__":
     main()
