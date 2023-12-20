@@ -31,7 +31,7 @@ def save_trial(df_training, df_testing, param, path_to_save):
 
 def plot_training(Training_results, num_epochs, path_to_save):
   '''
-  Plot the training results into 5x5 plots. Namely, the loss, the accuracy, the balanced accuracy, the learning rate 
+  Plot the training results into 5x5 plots. Namely, the loss, the accuracy, the balanced accuracy, 
   and the F1 score are repported.
 
   Args:
