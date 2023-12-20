@@ -9,7 +9,7 @@ import torch
 """
 This module handles the pipeline of testing the UNet models with and without dropout, including visualization.
 
-1. Load Data and Set Up Parameters:
+1. Load Data:
    - `set_random_seeds()`: Ensures reproducibility by setting random seeds.
    - `get_data(file_path)`: EEG data loading and preprocessing.
 
