@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 def he_init(layer):
   '''
-    He initialization for the weights of the layers
+    Variance-preserving initialization of weights for one layer.
 
     Args:
         layer (torch.nn.Module): layer to initialize
@@ -15,7 +15,7 @@ def he_init(layer):
 # Code edited from https://github.com/amirhosseinh77/UNet-AerialSegmentation/blob/main/model.py
 
 class DoubleConv(nn.Module):
-    """Consists of Conv -> BN -> ReLU -> Conv -> BN -> ReLU"""
+    """Consists of Convolution -> BatchNorm -> ReLU -> Convolution -> BatchNorm -> ReLU"""
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding='valid'):
         super().__init__()
         self.double_conv = nn.Sequential(
@@ -31,7 +31,7 @@ class DoubleConv(nn.Module):
       return self.double_conv(x)
 
 class Down(nn.Module):
-    """Consists of MaxPool then DoubleConv"""
+    """Consists of MaxPool -> DoubleConv"""
 
     def __init__(self, in_channels, out_channels, kernel_size):
         super().__init__()
@@ -44,7 +44,7 @@ class Down(nn.Module):
         return self.maxpool_conv(x)
 
 class Up(nn.Module):
-    """Consists of transpose convolution then double conv"""
+    """Consists of Transpose Convolution -> DoubleConv"""
 
     def __init__(self, in_channels, out_channels, kernel_size, stride=1):
         super().__init__()
@@ -66,7 +66,7 @@ class Up(nn.Module):
         return self.conv(x)
 
 class OutConv(nn.Module):
-    """Consists of transpose convolution then double conv"""
+    """Consists of Convolution -> BatchNorm"""
 
     def __init__(self, in_channels, out_channels):
         super(OutConv, self).__init__()
@@ -76,6 +76,9 @@ class OutConv(nn.Module):
         return self.conv(x)
     
 class UNet(nn.Module):
+    """Consists of DoubleConv -> (Down)*4 -> (Up)*4 -> Convolution
+    Analogous to encoder -> decoder.
+    """
     def __init__(self, n_channels, n_classes): # n_classes should be 2, because of binary classification : foreground and background class (gray or black)
         super(UNet, self).__init__()
         self.n_channels = n_channels
