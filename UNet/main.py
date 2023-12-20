@@ -25,10 +25,8 @@ This module implements a training pipeline for a UNet model with dropout layers.
 
 
 def main():
-        print("UNet_dropout")
-        # === Set random seeds for reproducibility ===
+        # Load data and set up parameters
         set_random_seeds()
-        # === Load the data ===        
         file_path = 'data/resampled_epochs_subj_0.pkl'
         epochs, labels = get_data(file_path)
         test_size = 0.2
@@ -52,7 +50,7 @@ def main():
         train_loader, test_loader = get_dataloaders(**data_kwargs)
         print("Data loaded")
 
-        # === Define the UNet and the training hyperparameters ===
+        # Define the UNet model and the training hyperparameters
         p_dropout = 0.5
         model = UNet_dropout(n_channels=1, n_classes=2, p_dropout=p_dropout).to(device)
         #model = UNet(n_channels=1, n_classes=2).to(device)
@@ -71,12 +69,11 @@ def main():
         gamma = 0.1876
         criterion = FocalLoss(gamma=gamma)
 
-
-        # === Train ===
+        # Train
         final_train_acc, lr_history, train_loss_history, train_acc_history, train_soft_acc_history, train_f1_history = run_training(model, optimizer, scheduler, criterion, num_epochs, train_loader, device)
         print("Model trained!")
 
-        # === Save the training outcomes ===
+        # Save the training outcomes
         filename = str(num_epochs)+'_iters_'+str(batch_size)+'batch_'+str(gamma)+'gamma_dropout'
         file_path = f'UNet/Trials/{filename}.pkl'
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
@@ -89,7 +86,7 @@ def main():
         "train_soft_acc_history": train_soft_acc_history,
         "train_f1_history": train_f1_history,
         }
-        # Save the training and validating data
+   
         with open(file_path, 'wb') as fp: 
                 pickle.dump(data_tr_val, fp)
 
