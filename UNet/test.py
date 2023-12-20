@@ -7,8 +7,6 @@ import numpy as np
 import torch
 
 """
-Module Overview:
-
 This module handles the pipeline of testing the UNet models with and without dropout, including visualization.
 
 1. Load Data and Set Up Parameters:
