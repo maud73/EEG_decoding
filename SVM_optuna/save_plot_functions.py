@@ -195,6 +195,9 @@ def plot_pattern(patterns):
     cmap_revers = cmap.reversed()
     c = ax[i].pcolor(Z, cmap=cmap_revers)
 
+  ax[0].set_axis_off()
+  ax[1].set_axis_off()
+
   ax[0].set_title('Taget')
   ax[1].set_title('Prediction')
 

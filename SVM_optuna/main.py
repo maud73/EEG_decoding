@@ -32,15 +32,15 @@ def main() :
   # Parameters 
   test_size = 0.2
 
-  num_epochs = 100 #for debugs
+  num_epochs = 300
   batch_size = 64
 
   # Path 
-  file_path = 'resampled_epochs_subj_0.pkl'
+  file_path = 'data/resampled_epochs_subj_0.pkl'
   path_to_save = 'Trials'
 
   epochs, labels = get_data(file_path, convention_neg=False)
-  train_loader, _ = get_dataloaders(epochs[:155], labels[:155], batch_size, test_size, return_val_set=False) #for debugs
+  train_loader, _ = get_dataloaders(epochs, labels, batch_size, test_size, return_val_set=False)
   
   # Find the label ratio
   _ , weights = balance_weight(labels)

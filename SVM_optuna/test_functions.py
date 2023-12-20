@@ -94,7 +94,6 @@ def test(trained_model, test_loader, outpath, device, stimuli):
   to_store['Testing singles accuracy'] = acc_single
   to_store['Testing singles F1'] = f1_single
   
-  k = 0
   points = []
   
   with torch.no_grad():

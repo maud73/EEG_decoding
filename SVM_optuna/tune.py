@@ -33,8 +33,8 @@ def main() :
     test_size = 0.2
     val_size = 0.3
     optuna_val_size = 0.3
-    n_trials = 1 #25 #for debugs
-    num_epochs = 5 #30 for debugs
+    n_trials = 25 
+    num_epochs = 30 
     batch_size = 32 
 
     # === Data loader ===
@@ -43,7 +43,7 @@ def main() :
 
     # Get the data
     epochs, labels = get_data(file_path, convention_neg=False)
-    train_loader, _ = get_dataloaders(epochs[:100], labels[:100], batch_size, test_size, return_val_set=False) #for debug
+    train_loader, _ = get_dataloaders(epochs, labels, batch_size, test_size, return_val_set=False)
     optuna_dataset = get_valset(train_loader,val_size)
     o_train_loader, o_val_loader = get_optuna_dataloaders(optuna_dataset, batch_size, optuna_val_size)
 
