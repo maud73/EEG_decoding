@@ -4,7 +4,7 @@ from sklearn.metrics import f1_score, balanced_accuracy_score
 
 def predict(output):
     '''
-    Predict the stimulus from the output of the model
+    Predict the stimulus from the output of the model, without matching to existing stimulus
 
     Args:
         output (Tensor): output of the model (n_batch, height and width 5)
@@ -17,7 +17,7 @@ def predict(output):
 
 def accuracy(prediction, target):
     '''
-    Compute the accuracy of the model
+    Compute the hard accuracy of the model, as opposed to a pixel-wise accuracy
 
     Args:
         prediction (Tensor): predicted stimulus (n_batch, height and width 5)
@@ -36,18 +36,18 @@ def train_epoch(model, optimizer, scheduler, criterion, train_loader, epoch, dev
     Train the model for one epoch
 
     Args:
-        model (torch.nn.Module): model to train
+        model (torch.nn.Module): UNet model to train
         optimizer (torch.optim): optimizer
-        scheduler (torch.optim.lr_scheduler): scheduler
+        scheduler (torch.optim.lr_scheduler): learning rate scheduler
         criterion (torch.nn.Module): loss function
         train_loader (torch.utils.data.DataLoader): training set
         epoch (int): current epoch
-        device (str): device to use
+        device (str): device to use, 'cuda' or 'cpu'
 
     Returns:
         loss_history (list): loss history of the epoch
         accuracy_history (list): accuracy history of the epoch
-        soft_accuracy_history (list): soft accuracy history of the epoch
+        soft_accuracy_history (list): balanced accuracy history of the epoch
         f1_history (list): F1 score history of the epoch
         lr_history (list): learning rate history of the epoch
     '''
@@ -87,7 +87,8 @@ def train_epoch(model, optimizer, scheduler, criterion, train_loader, epoch, dev
       f1_history.append(f1)
 
       lr_history.append(scheduler.get_last_lr()[0])
-
+        
+      # Keep track of the training metrics
       if batch_idx % (len(train_loader.dataset) // len(data) // 10) == 0:
           print(
               f"Train Epoch: {epoch}-{batch_idx:03d} "
@@ -106,26 +107,25 @@ def run_training(model, optimizer, scheduler, criterion, num_epochs, train_loade
     Train the model
 
     Args:
-        model (torch.nn.Module): model to train
+        model (torch.nn.Module): UNet model to train
         optimizer (torch.optim): optimizer
-        scheduler (torch.optim.lr_scheduler): scheduler
+        scheduler (torch.optim.lr_scheduler): learning rate scheduler
         criterion (torch.nn.Module): loss function
         num_epochs (int): number of epochs
         train_loader (torch.utils.data.DataLoader): training set
-        device (str): device to use
+        device (str): device to use, 'cuda' or 'cpu'
 
     Returns:
         train_acc (float): accuracy on the training set
         lr_history (list): learning rate history
         train_loss_history (list): loss history
         train_acc_history (list): accuracy history
-        train_soft_acc_history (list): soft accuracy history
+        train_soft_acc_history (list): balanced accuracy history
         train_f1_history (list): F1 score history
     '''
-    # ===== Model =====
     model = model.to(device=device)
 
-    # ===== Train Model =====
+    # Train
     lr_history = []
     train_loss_history = []
     train_acc_history = []
