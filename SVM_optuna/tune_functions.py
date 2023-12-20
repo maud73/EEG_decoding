@@ -2,7 +2,7 @@ import optuna
 import pandas as pd
 import torch 
 import os
-from sklearn.metrics import balanced_accuracy_score
+from sklearn.metrics import balanced_accuracy_score, f1_score
 
 from helpers import resize_batch
 from model import SVM_pixel
@@ -187,8 +187,6 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
       model.eval()
       
       # To report 
-      ACC = 0
-   
       with torch.no_grad():
         for batch_x, batch_y in  o_val_loader:
           batch_x, batch_y = resize_batch(batch_x, batch_y,  num_pixel)
@@ -200,11 +198,15 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
           # Prediction 
           pred = model.predict_label(output)
 
-          # Save metric
-          acc = balanced_accuracy_score(batch_y.flatten().cpu(),pred.flatten().cpu())
-          ACC += acc
+          # Concatenate the predictions and the labels 
+          if 'Y' in locals(): Y= torch.cat((Y, batch_y))
+          else : Y = batch_y 
+        
+          if 'PRED' in locals() : PRED = torch.cat((PRED,pred))
+          else : PRED = pred
 
-      ACC_= ACC / len(o_val_loader)
+      ACC_ = balanced_accuracy_score(Y.flatten().cpu(), PRED.flatten().cpu())
+
       trial.report(ACC_, epoch)
 
       # Handle pruning based on the intermediate value

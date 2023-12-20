@@ -34,7 +34,7 @@ def main() :
     val_size = 0.3
     optuna_val_size = 0.3
     n_trials = 1 #25 #for debugs
-    num_epochs = 30 
+    num_epochs = 5 #30 for debugs
     batch_size = 32 
 
     # === Data loader ===

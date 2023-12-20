@@ -22,8 +22,6 @@ def test_single_model(model, test_loader, num_pixel, device):
   '''
 
   running_corrects =0
-  running_wacc=0
-  running_f1 =0
   with torch.no_grad():
     for batch_x, batch_y in test_loader:
 
@@ -38,20 +36,22 @@ def test_single_model(model, test_loader, num_pixel, device):
 
         preds = model.predict_label(outputs)
 
-        # Save the metrics
-        running_corrects += torch.mean((preds == batch_y.data).float()).cpu()
-        
-        # Balanced accuracy
-        wacc = balanced_accuracy_score(batch_y.flatten().cpu(),preds.flatten().cpu())
-        running_wacc += wacc
+        # Concatenate the predictions and the labels 
+        if 'Y' in locals():
+          Y= torch.cat((Y, batch_y))
+        else : Y = batch_y
 
-        # F1 score
-        f1 = f1_score(batch_y.flatten().cpu(),preds.flatten().cpu())
-        running_f1 += f1
+        if 'PRED' in locals() :
+          PRED = torch.cat((PRED,preds))
+        else : PRED = preds
+
+        # Save the hard accuracy 
+        running_corrects += torch.mean((preds == batch_y.data).float()).cpu()
 
     acc = running_corrects.item() / len(test_loader)
-    Wacc = running_wacc / len(test_loader)
-    F1 = running_f1/len(test_loader)
+  
+    F1 = f1_score(Y.flatten().cpu(),PRED.flatten().cpu())
+    Wacc = balanced_accuracy_score(Y.flatten().cpu(), PRED.flatten().cpu())
 
   return F1, Wacc, acc
 
