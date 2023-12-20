@@ -12,14 +12,12 @@ from Data_processing import get_data, get_dataloaders, get_valset, get_optuna_da
 
 2. Optuna Hyperparameter Optimization:
     - Sets Optuna parameters: number of epochs per trial, the number of trials, the split factor.
-    - Generates data loaders and splits the validation set into pseudo-train and validation sets for Optuna.
+    - Splits the validation set into pseudo-train and validation sets for Optuna.
 
 3. Optuna Study Execution:
-    - Builds and executes an Optuna study with the specified number of trials.
-    - Maximizes the objective function using the Optuna study.
+    - Maximizes the objective function using an Optuna study.
 
 4. Results and Storage:
-    - Collects information about pruned and completed trials.
     - Saves the best trial's hyperparameters along with its corresponding F1 score.
 
 Note: the seeds were not fixed prior to hyperparameter tuning. Exact reproducibility may be impaired.
@@ -37,7 +35,8 @@ def main():
         labels=labels,
         batch_size=batch_size
     )
-    # Optuna parameter
+    
+    # Optuna parameters
     n_trials = 20
     print(f"Run with n_trials={n_trials}, num_epochs={num_epochs}")
     test_size = 0.2
@@ -57,7 +56,7 @@ def main():
     
     pruned_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[optuna.trial.TrialState.COMPLETE])
-    print("Saving hyperparameters")
+
     # Save the best trial
     trial = study.best_trial
     param = {}
