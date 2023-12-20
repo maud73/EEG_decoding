@@ -168,7 +168,6 @@ mne-torch/
 draft/
 *.png
 *.zip
-test_*
 *.pkl
 *.pth
 *.npy
