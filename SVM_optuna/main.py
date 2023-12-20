@@ -1,8 +1,15 @@
-from SVM import *
+import torch
+import pandas as pd 
+
 from Data_processing import get_dataloaders, get_data
 from reproducibility import set_random_seeds
-import pandas as pd
-import numpy as np
+
+from model import SVM
+from helpers import balance_weight
+from SVM_optuna.train_functions import train
+from test import test
+from SVM_optuna.save_plot_fonctions import save_trial, plot_training, plot_testing
+
 
 def main() :
   print("SVM")
@@ -49,23 +56,18 @@ def main() :
   SVMmodel = SVM(device, input_size, pixel_nb = 25)
   SVMmodel = SVMmodel.to(device)
 
-  #Train and validate the model
-  pritn('training...')
+  # Train and validate the model
+  print('training...')
   Training_results = train(SVMmodel,train_loader, device, num_epochs, weights, hyperparam) 
 
-  #Test the model
+  # Test the model
   print("Testing ...")
   Testing_results = test(SVMmodel, test_loader, path_to_save, device) 
 
   # ===== Saving and Plots =====
-  #save
+  # Save
   print("Saving ...")
   save_trial(Training_results, Testing_results, param, path_to_save)
-
-  #plot and save 
-  #plot_training(Training_results, num_epochs, path_to_save)
-  #plot_testing(Testing_results, path_to_save)
-
 
 if __name__ == "__main__":
     main()
