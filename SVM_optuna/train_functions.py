@@ -79,7 +79,7 @@ def train_single_model(model, train_loader, num_pixel, num_epoch, device, weight
 
         preds = model.predict_label(outputs)
 
-        loss = criterion(outputs, batch_y.flatten())
+        loss = criterion(outputs, batch_y.squeeze())
 
         # Add regularization term
         weight = model.fc.weight.squeeze()

@@ -2,7 +2,7 @@ import optuna
 import pandas as pd
 import torch 
 import os
-from sklearn import balanced_accuracy_score
+from sklearn.metrics import balanced_accuracy_score
 
 from helpers import resize_batch
 from model import SVM_pixel
@@ -145,7 +145,7 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
 
     # Optimaser and criterion for the study
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=(beta1, beta2), eps=1e-08, weight_decay=weight_decay)
-    criterion = torch.nn.MultiMarginLoss(weight = weight_)
+    criterion = torch.nn.MultiMarginLoss(weight = weight_.double())
     
     # Scheduler hyperparameter
     scheduler_name = trial.suggest_categorical('scheduler', ['StepLR', 'CosineAnnealingLR'])
@@ -171,7 +171,7 @@ def objective(trial, num_pixel, weight_, device, input_size, o_train_loader, o_v
         # Forward pass 
         output = model(batch_x)
 
-        loss = criterion(output, batch_y.flatten())
+        loss = criterion(output, batch_y.squeeze())
 
         # Add regularization
         weight = model.fc.weight.squeeze()

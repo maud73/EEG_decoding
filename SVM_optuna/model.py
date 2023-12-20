@@ -3,8 +3,7 @@ import torch
 
 class SVM_pixel(torch.nn.Module):
   """
-  SVM_pixel class, support vector machine model classify single pixel
-  into the class 0 or 1.
+  SVM_pixel class, support vector machine model classify single pixel into the class 0 or 1.
   """
   def __init__(self,  input_size, num_classes=2):
     super(SVM_pixel, self).__init__()

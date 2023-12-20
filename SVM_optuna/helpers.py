@@ -6,7 +6,7 @@ def resize_batch(batch_x, batch_y, num_pixel):
 
   Args:
       batch_x (torch.Tensor): batch of data
-      batch_y (torch.Tensor): batch of labels
+      batch_y (torch.Tensor): batch of labels, 0 for black, 1 for gray
       num_pixel (int): pixel number
 
   Returns:
@@ -37,7 +37,7 @@ def balance_weight(labels):
   Compute the weight for the loss function. The weights are pixel specific and correspond to the frequence of each label class
 
   Args:
-      labels (torch.Tensor): labels
+      labels (torch.Tensor): labels, 0 for black, 1 for gray
 
   Returns:
       item (torch.Tensor): labels [0, 1]
