@@ -1,4 +1,4 @@
-from Data_processing import get_dataloaders, get_data
+from Data_processing.Data_processing import get_dataloaders, get_data
 from train_functions import run_training
 from reproducibility import set_random_seeds
 import torch
