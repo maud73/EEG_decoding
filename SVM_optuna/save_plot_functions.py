@@ -47,9 +47,7 @@ def plot_training(Training_results, num_epochs, path_to_save):
   fig3, axs3 = plt.subplots(5, 5, figsize=(30,30))
   fig3.suptitle('Training weighted accuracy', fontsize=40)
   fig4, axs4 = plt.subplots(5, 5, figsize=(30,30))
-  fig4.suptitle('Learning rate history', fontsize=40)
-  fig5, axs5 = plt.subplots(5, 5, figsize=(30,30))
-  fig5.suptitle('Training F1 score', fontsize=40)
+  fig4.suptitle('Training F1 score', fontsize=40)
 
   x = np.linspace(0,  num_epochs, num_epochs)
 
@@ -71,7 +69,6 @@ def plot_training(Training_results, num_epochs, path_to_save):
     training_loss = ast.literal_eval(str(pixel['Training loss']))
     training_acc = ast.literal_eval(str(pixel['Training accuracy']))
     training_wacc = ast.literal_eval(str(pixel['Training weighted accuracy']))
-    training_lr = ast.literal_eval(str(pixel['Learning rate history']))
     training_f1 = ast.literal_eval(str(pixel['Training F1']))
 
 
@@ -84,11 +81,8 @@ def plot_training(Training_results, num_epochs, path_to_save):
     # Training weighted accuracy
     axs3[n,m].plot(x, training_wacc)
 
-    # Learning rate history
-    axs4[n,m].plot(x, training_lr)
-
     # F1 score
-    axs5[n,m].plot(x, training_f1)
+    axs4[n,m].plot(x, training_f1)
 
 
   # Save plots into /Trials/plots folder 
@@ -98,8 +92,7 @@ def plot_training(Training_results, num_epochs, path_to_save):
   fig1.savefig(os.path.join(outpath,"Training_loss.png"))
   fig2.savefig(os.path.join(outpath,"Training_accuracy.png"))
   fig3.savefig(os.path.join(outpath, "Training_weighted_accuracy.png"))
-  fig4.savefig(os.path.join(outpath, "Training_Learning_rate_history"))
-  fig5.savefig(os.path.join(outpath, "Training_F1_score"))
+  fig4.savefig(os.path.join(outpath, "Training_F1_score"))
 
   print('saving done in /trials/plots directory')
 
