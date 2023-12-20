@@ -31,7 +31,7 @@ def save_trial(df_training, df_testing, param, path_to_save):
 
 def plot_training(Training_results, num_epochs, path_to_save):
   '''
-  Plot the training results into 5x5 plots. Namely, the loss, the accuracy, the balanced accuracy, 
+  Plot the training results into 5x5 plots. Namely, the loss, the accuracy, the balanced accuracy, the learning rate 
   and the F1 score are repported.
 
   Args:
@@ -46,8 +46,10 @@ def plot_training(Training_results, num_epochs, path_to_save):
   fig2.suptitle('Training accuracy', fontsize=40)
   fig3, axs3 = plt.subplots(5, 5, figsize=(30,30))
   fig3.suptitle('Training weighted accuracy', fontsize=40)
-  fig4, axs4 = plt.subplots(5, 5, figsize=(30,30))
-  fig4.suptitle('Training F1 score', fontsize=40)
+  #fig4, axs4 = plt.subplots(5, 5, figsize=(30,30))
+  #fig4.suptitle('Learning rate history', fontsize=40)
+  fig5, axs5 = plt.subplots(5, 5, figsize=(30,30))
+  fig5.suptitle('Training F1 score', fontsize=40)
 
   x = np.linspace(0,  num_epochs, num_epochs)
 
@@ -82,7 +84,7 @@ def plot_training(Training_results, num_epochs, path_to_save):
     axs3[n,m].plot(x, training_wacc)
 
     # F1 score
-    axs4[n,m].plot(x, training_f1)
+    axs5[n,m].plot(x, training_f1)
 
 
   # Save plots into /Trials/plots folder 
@@ -92,7 +94,7 @@ def plot_training(Training_results, num_epochs, path_to_save):
   fig1.savefig(os.path.join(outpath,"Training_loss.png"))
   fig2.savefig(os.path.join(outpath,"Training_accuracy.png"))
   fig3.savefig(os.path.join(outpath, "Training_weighted_accuracy.png"))
-  fig4.savefig(os.path.join(outpath, "Training_F1_score"))
+  fig5.savefig(os.path.join(outpath, "Training_F1_score"))
 
   print('saving done in /trials/plots directory')
 
@@ -110,17 +112,17 @@ def plot_testing(Testing_results, path_to_save):
 
   # Fig 1. Balanced accuracy
   fig1, ax1 = plt.subplots()
-  im, cbar = heatmap(Wacc, ax=ax1, cmap="YlGn", cbarlabel="Balanced accuracy")
+  im = heatmap(Wacc, ax=ax1, cmap="YlGn")
   texts = annotate_heatmap(im, valfmt="{x:.4f}")
 
   # Fig 2. F1 score
   fig2, ax2 = plt.subplots()
-  im, cbar = heatmap(f1, ax=ax2, cmap="YlGn", cbarlabel="F1 score")
+  im = heatmap(f1, ax=ax2, cmap="YlGn")
   texts = annotate_heatmap(im, valfmt="{x:.4f}")
 
   # Fig 3. Accuracy score
   fig3, ax3 = plt.subplots()
-  im, cbar = heatmap(acc, ax=ax3, cmap="YlGn", cbarlabel="Accuracy")
+  im = heatmap(acc, ax=ax3, cmap="YlGn")
   texts = annotate_heatmap(im, valfmt="{x:.4f}")
  
   # Save plot into Trials/plots directory 
@@ -179,7 +181,7 @@ def plot_pattern(patterns):
 
   return fig, ax
 
-def heatmap(data, cbarlabel, ax=None, cbar_kw=None, **kwargs):
+def heatmap(data, ax=None, cbar_kw=None, **kwargs):
     '''
     Create a heatmap from a numpy array and two lists of labels.
 
@@ -203,10 +205,6 @@ def heatmap(data, cbarlabel, ax=None, cbar_kw=None, **kwargs):
     # Plot the heatmap
     im = ax.imshow(data, **kwargs)
 
-    # Create colorbar
-    cbar = ax.figure.colorbar(im, ax=ax, **cbar_kw)
-    cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom", fontsize=21)
-
     # No ticks 
     ax.set_yticks(np.arange(len(data)), labels=[])
     ax.set_xticks(np.arange(len(data)), labels=[])
@@ -226,7 +224,7 @@ def heatmap(data, cbarlabel, ax=None, cbar_kw=None, **kwargs):
     ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
     ax.tick_params(which="minor", bottom=False, left=False)
 
-    return im, cbar
+    return im
 
 def annotate_heatmap(im, valfmt="{x:.2f}", **textkw):
     '''
