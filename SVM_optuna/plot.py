@@ -7,15 +7,17 @@ This module is a pipline to plot the outputs of the full-SVM training and testin
 Plot are saved into Trials/Plots folder: 
    1. For the training phase the curves for:
    - Loss history per pixel
-   - learning rate per pixel
    - accuracy per pixel
    - balanced accuracy per pixel 
    - F1 score per pixel
+   - mean f1, balanced accuracy and hard accuracy
 
    2. For the testing phase the heat maps for:
    - F1 score per pixel 
    - accuracy per pixel
    - balanced accuracy per pixel 
+
+   3. 5 of the best and worst predicitons
 
 """
 

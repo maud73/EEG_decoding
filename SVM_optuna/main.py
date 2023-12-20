@@ -7,25 +7,21 @@ from reproducibility import set_random_seeds
 from model import SVM
 from helpers import balance_weight
 from train_functions import train
-from test_functions import test
-from save_plot_functions import save_trial, plot_training, plot_testing
+from save_plot_functions import save_train
 
 """
-This module implements a training and testing pipeline for a full-SVM model, wich corresponds to 25 SVM model.
+This module implements a training pipeline for a full-SVM model, wich corresponds to 25 SVM model.
 
 1. Data Loading:
    - `set_random_seeds()`: Ensures reproducibility by setting random seeds.
    - `get_data(file_path)`: EEG data loading and preprocessing.
    - take the hyperparameter from the file.
 
-2. Model Training and Testing:
+2. Model Training:
    - Trains the full SVM model.
-   - Tests the full SVM model.
-   - Some results are saved during the testing phase.
 
 3. Saving
    - Save the outputs of the training: Loss, learning rate, accuracy, balanced accuracy and F1 score history.
-   - Save the outputs of the testing: F1 score, accuracy, balanced accuracy.
 """
 
 def main() :
@@ -44,7 +40,7 @@ def main() :
   path_to_save = 'Trials'
 
   epochs, labels = get_data(file_path, convention_neg=False)
-  train_loader, test_loader = get_dataloaders(epochs[:155], labels[:155], batch_size, test_size, return_val_set=False) #for debugs
+  train_loader, _ = get_dataloaders(epochs[:155], labels[:155], batch_size, test_size, return_val_set=False) #for debugs
   
   # Find the label ratio
   _ , weights = balance_weight(labels)
@@ -77,14 +73,10 @@ def main() :
   print('training...')
   Training_results = train(SVMmodel,train_loader, device, num_epochs, weights, hyperparam) 
 
-  # Test the model
-  print("Testing ...")
-  Testing_results = test(SVMmodel, test_loader, path_to_save, device) 
-
   # ===== Saving =====
   # Save
   print("Saving ...")
-  save_trial(Training_results, Testing_results, param, path_to_save)
+  save_train(Training_results, param, path_to_save)
 
 if __name__ == "__main__":
     main()

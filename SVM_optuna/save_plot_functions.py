@@ -6,13 +6,12 @@ import os
 import pandas as pd
 import ast
 
-def save_trial(df_training, df_testing, param, path_to_save):
+def save_train(df_training, param, path_to_save):
   '''
-  Save the results of the training and testing
+  Save the results of the training
 
   Args:
       df_training (pd.DataFrame): training results
-      df_testing (pd.DataFrame): testing results
       param (dict): hyperparameters
       path_to_save (str): path to save the results
   '''
@@ -23,10 +22,29 @@ def save_trial(df_training, df_testing, param, path_to_save):
   os.makedirs(path_to_save, exist_ok=True)
 
   df_param.to_csv(path_to_save + '/parameters.csv')
-  df_testing.to_csv(path_to_save + '/testing.csv')
   df_training.to_csv(path_to_save + '/training.csv')
 
-  print('trials saved in /trials directory')
+  print('training saved in /trials directory')
+
+def save_test(df_testing,list_mean, path_to_save):
+  '''
+  Save the results of the testing
+
+  Args:
+      df_testing (pd.DataFrame): testing results
+      path_to_save (str): path to save the results
+  '''
+  # Save the per pixel information
+  df_testing.to_csv(path_to_save + '/testing.csv')
+
+  # Save the global information
+  dict_mean = {'Mean Accuracy:' : list_mean[0], 
+                          'Mean Balance Accuracy:':list_mean[1], 
+                          'Mean F1 Score:' : list_mean[2]}
+  df_mean = pd.DataFrame.from_dict(dict_mean, orient='index')
+  df_mean.to_csv(path_to_save + '/mean_testing.csv')
+
+  print('testing saved in /trials directory')
 
 
 def plot_training(Training_results, num_epochs, path_to_save):
@@ -41,15 +59,13 @@ def plot_training(Training_results, num_epochs, path_to_save):
   '''
 
   fig1, axs1 = plt.subplots(5, 5, figsize=(30,30))
-  fig1.suptitle('Training loss', fontsize=40)
+
   fig2, axs2 = plt.subplots(5, 5, figsize=(30,30))
-  fig2.suptitle('Training accuracy', fontsize=40)
+
   fig3, axs3 = plt.subplots(5, 5, figsize=(30,30))
-  fig3.suptitle('Training weighted accuracy', fontsize=40)
-  #fig4, axs4 = plt.subplots(5, 5, figsize=(30,30))
-  #fig4.suptitle('Learning rate history', fontsize=40)
-  fig5, axs5 = plt.subplots(5, 5, figsize=(30,30))
-  fig5.suptitle('Training F1 score', fontsize=40)
+
+  fig4, axs4 = plt.subplots(5, 5, figsize=(30,30))
+  
 
   x = np.linspace(0,  num_epochs, num_epochs)
 
@@ -75,16 +91,16 @@ def plot_training(Training_results, num_epochs, path_to_save):
 
 
     # Training loss
-    axs1[n,m].plot(x, training_loss)
+    axs1[n,m].plot(x, training_loss,'k')
 
     # Training accuracy
-    axs2[n,m].plot(x, training_acc) 
+    axs2[n,m].plot(x, training_acc, 'k') 
 
     # Training weighted accuracy
-    axs3[n,m].plot(x, training_wacc)
+    axs3[n,m].plot(x, training_wacc, 'k')
 
     # F1 score
-    axs5[n,m].plot(x, training_f1)
+    axs4[n,m].plot(x, training_f1,'k')
 
 
   # Save plots into /Trials/plots folder 
@@ -94,7 +110,7 @@ def plot_training(Training_results, num_epochs, path_to_save):
   fig1.savefig(os.path.join(outpath,"Training_loss.png"))
   fig2.savefig(os.path.join(outpath,"Training_accuracy.png"))
   fig3.savefig(os.path.join(outpath, "Training_weighted_accuracy.png"))
-  fig5.savefig(os.path.join(outpath, "Training_F1_score"))
+  fig4.savefig(os.path.join(outpath, "Training_F1_score"))
 
   print('saving done in /trials/plots directory')
 
@@ -135,7 +151,7 @@ def plot_testing(Testing_results, path_to_save):
 
   print('saving done in /trials/plots directory')
 
-def save_prediction(true_patterns, pred_patterns, outpath, i):
+def save_prediction(patterns, outpath, ind):
   '''
   Save the True stimuli image vs. predicted stimuli. 
 
@@ -149,12 +165,13 @@ def save_prediction(true_patterns, pred_patterns, outpath, i):
   outpath = outpath + '/testing_pattern_example'
   os.makedirs(outpath, exist_ok=True)
 
-  for true_pattern, pred_pattern in zip(true_patterns, pred_patterns) :
-    
+  for i,pattern in enumerate(patterns) :
     # Plot the stimuli into a grid
-    fig, _ = plot_pattern([true_pattern, pred_pattern])
+    target = pattern['target'] 
+    pred = pattern['predict'] 
 
-    filname = f'Pred_vs_true_n{i}'
+    fig, _ = plot_pattern([target,pred])
+    filname = f'Pred_vs_true_{ind}_{i}'
 
     # Saving
     fig.savefig(os.path.join(outpath, filname))
@@ -174,7 +191,9 @@ def plot_pattern(patterns):
 
   for i, pattern in enumerate(patterns) :
     Z = pattern.numpy().reshape([5,5])
-    c = ax[i].pcolor(Z, cmap='binary')
+    cmap = plt.cm.get_cmap('binary')
+    cmap_revers = cmap.reversed()
+    c = ax[i].pcolor(Z, cmap=cmap_revers)
 
   ax[0].set_title('True pattern')
   ax[1].set_title('Predict pattern')

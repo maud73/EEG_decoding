@@ -55,3 +55,18 @@ def balance_weight(labels):
 
   return item, alphas
 
+def hard_accuracy(pred, true):
+    '''
+    Compute the hard accuracy of the model, as opposed to a pixel-wise accuracy
+
+    Args:
+        prediction (Tensor): predicted stimulus (n_batch, height and width 5)
+        target (Tensor): true stimulus (n_batch, height and width 5)
+
+    Returns:
+        acc (float): accuracy
+    '''
+    N = pred.shape[0]
+    temp = torch.all(torch.all(torch.eq(pred, true), dim=-1), dim=-1) # Dimension n_batch
+    acc = torch.sum(temp)
+    return (acc / N).cpu()

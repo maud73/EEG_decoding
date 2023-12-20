@@ -1,8 +1,9 @@
 import torch 
 from sklearn.metrics import f1_score, balanced_accuracy_score
 import pandas as pd
+import numpy as np
 
-from helpers import resize_batch
+from helpers import resize_batch, hard_accuracy
 from save_plot_functions import save_prediction
 
 def test_single_model(model, test_loader, num_pixel, device):
@@ -55,9 +56,10 @@ def test_single_model(model, test_loader, num_pixel, device):
 
   return F1, Wacc, acc
 
-def test(trained_model, test_loader, outpath, device): 
+def test(trained_model, test_loader, outpath, device, stimuli): 
   '''
-  Test the full model, it's testing each of the SVM_pixel model with the right associated data
+  Test the full model, it's testing each of the SVM_pixel model with the right associated data. Put togathr the single prediction
+  fit with the nerest stimuli and selesct 5 of the worst/best prediciton.
 
   Args:
       trained_model (torch.nn.Module): model to test
@@ -67,6 +69,7 @@ def test(trained_model, test_loader, outpath, device):
 
   Returns:
       to_store (pd.DataFrame): testing results
+      points (dict): testing result per point
   '''
   
   to_store = pd.DataFrame(columns=['Testing singles weighted accuracy', 'Testing singles accuracy', 'Testing singles F1'] )
@@ -92,6 +95,8 @@ def test(trained_model, test_loader, outpath, device):
   to_store['Testing singles F1'] = f1_single
   
   k = 0
+  points = []
+  
   with torch.no_grad():
   
     for batch_x, batch_y in test_loader:
@@ -104,15 +109,28 @@ def test(trained_model, test_loader, outpath, device):
 
         # One forward of the 25-SVM model 
         outputs = trained_model(batch_x)
-        k+=1
+        pred_pattern = trained_model.predict_pattern(outputs)
+        
+        pred_pattern = pred_pattern.cpu()
+      
+        correlation_coefficients = [np.corrcoef(stimulus.flatten(), pred_pattern.flatten())[0, 1] for stimulus in stimuli]
+        closest = np.argmax(correlation_coefficients)
+        pred = torch.from_numpy(stimuli[closest]).unsqueeze(0).to(device)
 
-        # Save exemple true stimuli vs. predicted one every 100 epochs
-        if i%100 ==0 :
-          pred_pattern = trained_model.predict_pattern(outputs)
+        # Compute the hard accurcy if we match the stimuli
+        acc = hard_accuracy(pred_pattern, batch_y)
 
-          # Save the prediction under /Trials folder
-          save_prediction(batch_y.cpu(), pred_pattern.cpu(), outpath, i) 
+        f1 = f1_score(batch_y.flatten().cpu(), pred.flatten().cpu())
+        soft_acc = balanced_accuracy_score(batch_y.flatten().cpu(), pred.flatten().cpu())
 
-  print('saving example pattern into trials/testing_patterns_example')
-  return to_store
+        point = {'target': batch_y.detach().cpu(),
+          'predict': pred.detach().cpu(),
+            'accuracy': acc.detach().cpu().numpy(),
+            'soft_accuracy': soft_acc,
+                   'f1': f1,
+          }
+        
+        points.append(point)
+
+    return to_store, points
 
