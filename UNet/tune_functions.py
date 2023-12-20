@@ -7,7 +7,7 @@ from sklearn.metrics import f1_score
 
 def test_f1(model, val_loader_hyp, device):
     '''
-    Test the model on the validation set and compute the F1 score
+    Test the model on the validation set by computing the F1 score
 
     Args:
         model (torch.nn.Module): trained model
@@ -15,7 +15,7 @@ def test_f1(model, val_loader_hyp, device):
         device (str): device to use
 
     Returns:
-        f1 (float): F1 score
+        f1 (float): mean F1 score
     '''
     f1 = 0
     with torch.no_grad():
@@ -32,19 +32,21 @@ def test_f1(model, val_loader_hyp, device):
 
 def objective(trial, device, train_loader_hyp, val_loader_hyp, num_epochs):
     '''
-    Objective function for the hyperparameter optimization
+    Objective function to be optimized by tuning the hyperparameters, here, the F1 score
 
     Args:
         trial (optuna.trial): trial
         device (str): device to use
-        train_loader_hyp (torch.utils.data.DataLoader): training set
-        val_loader_hyp (torch.utils.data.DataLoader): validation set
+        train_loader_hyp (torch.utils.data.DataLoader): training set for hyperparameter tuning
+        val_loader_hyp (torch.utils.data.DataLoader): validation set for hyperparameter tuning
         num_epochs (int): number of epochs
 
     Returns:
         f1 (float): F1 score
+
+    Note: The training and validation sets for hyperparameter tuning make up the validation set.
     '''
-    print("Enter objective")
+
     # Generate the model
     model = UNet(n_channels=1, n_classes=2).to(device)
     model = model.double()
