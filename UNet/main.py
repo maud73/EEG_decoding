@@ -1,7 +1,6 @@
 from Data_processing import get_dataloaders, get_data
 from train_functions import run_training
 from reproducibility import set_random_seeds
-
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,6 +9,19 @@ from loss import FocalLoss
 from test import test
 import os 
 import pickle
+
+"""
+This module implements a training pipeline for a UNet model with dropout layers.
+
+1. Data Loading:
+   - `set_random_seeds()`: Ensures reproducibility by setting random seeds.
+   - `get_data(file_path)`: EEG data loading and preprocessing.
+   - Initializes model hyperparameters.
+
+2. Model Training:
+   - Trains the UNet model with dropout layers.
+   - Saves the trained model and the training outcomes: hard accuracy, loss, balanced accuracy and F1 score.
+"""
 
 
 def main():
