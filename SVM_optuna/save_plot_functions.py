@@ -4,6 +4,7 @@ from matplotlib.ticker import StrMethodFormatter
 from matplotlib.colors import LogNorm
 import os
 import pandas as pd
+import ast
 
 def save_trial(df_training, df_testing, param, path_to_save):
   '''
@@ -66,21 +67,28 @@ def plot_training(Training_results, num_epochs, path_to_save):
       m = 3
     if i >=20 and i < 25:
       m = 4
+    
+    training_loss = ast.literal_eval(str(pixel['Training loss']))
+    training_acc = ast.literal_eval(str(pixel['Training accuracy']))
+    training_wacc = ast.literal_eval(str(pixel['Training weighted accuracy']))
+    training_lr = ast.literal_eval(str(pixel['Learning rate history']))
+    training_f1 = ast.literal_eval(str(pixel['Training F1']))
+
 
     # Training loss
-    axs1[n,m].plot(x, pixel[1])
+    axs1[n,m].plot(x, training_loss)
 
     # Training accuracy
-    axs2[n,m].plot(x, pixel[3])
+    axs2[n,m].plot(x, training_acc) 
 
     # Training weighted accuracy
-    axs3[n,m].plot(x, pixel[4])
+    axs3[n,m].plot(x, training_wacc)
 
     # Learning rate history
-    axs4[n,m].plot(x, pixel[2])
+    axs4[n,m].plot(x, training_lr)
 
     # F1 score
-    axs5[n,m].plot(x, pixel[5])
+    axs5[n,m].plot(x, training_f1)
 
 
   # Save plots into /Trials/plots folder 
@@ -243,7 +251,7 @@ def annotate_heatmap(im, valfmt="{x:.2f}", **textkw):
     data = im.get_array()
 
     # Normalize the threshold to the images color range
-    threshold = im.norm(threshold)
+    threshold = im.norm(data.max())/2.
     
     # Set default alignment to center
     kw = dict(horizontalalignment="center",

@@ -3,7 +3,7 @@ import ast
 import pandas as pd
 from sklearn.metrics import f1_score, balanced_accuracy_score
 
-from helpers import resize_batch, balanced_accuracy_score
+from helpers import resize_batch
 
 
 def train_single_model(model, train_loader, num_pixel, num_epoch, device, weight_, param):

@@ -7,8 +7,8 @@ from reproducibility import set_random_seeds
 from model import SVM
 from helpers import balance_weight
 from train_functions import train
-from test import test
-from save_plot_fonctions import save_trial, plot_training, plot_testing
+from test_functions import test
+from save_plot_functions import save_trial, plot_training, plot_testing
 
 
 def main() :
