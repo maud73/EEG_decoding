@@ -95,15 +95,5 @@ def main():
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         torch.save(model.state_dict(), file_path) 
 
-
-        # === Training curves ===
-        n_train = len(train_acc_history)
-        t_train = num_epochs * np.arange(n_train) / n_train
-        t_val = np.arange(1, num_epochs + 1)
-
-        file_path = f'UNet/Plots/{filename}.png'
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
-
 if __name__ == '__main__':
         main()
