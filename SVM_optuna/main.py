@@ -6,9 +6,9 @@ from reproducibility import set_random_seeds
 
 from model import SVM
 from helpers import balance_weight
-from SVM_optuna.train_functions import train
+from train_functions import train
 from test import test
-from SVM_optuna.save_plot_fonctions import save_trial, plot_training, plot_testing
+from save_plot_fonctions import save_trial, plot_training, plot_testing
 
 
 def main() :
