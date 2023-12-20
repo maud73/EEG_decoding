@@ -1,6 +1,7 @@
 from Data_processing import get_dataloaders, get_data
 from train_functions import run_training
 from reproducibility import set_random_seeds
+
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,23 +11,12 @@ from test import test
 import os 
 import pickle
 
-"""
-This module implements a training pipeline for a UNet model with dropout layers.
-
-1. Data Loading:
-   - `set_random_seeds()`: Ensures reproducibility by setting random seeds.
-   - `get_data(file_path)`: EEG data loading and preprocessing.
-   - Initializes model hyperparameters.
-
-2. Model Training:
-   - Trains the UNet model with dropout layers.
-   - Saves the trained model and the training outcomes: hard accuracy, loss, balanced accuracy and F1 score.
-"""
-
 
 def main():
-        # Load data and set up parameters
+        print("UNet_without_dropout")
+        # === Set random seeds for reproducibility ===
         set_random_seeds()
+        # === Load the data ===        
         file_path = 'data/resampled_epochs_subj_0.pkl'
         epochs, labels = get_data(file_path)
         test_size = 0.2
@@ -34,9 +24,9 @@ def main():
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # For the dropout UNet
-        num_epochs = 18
+        #num_epochs = 18
         # For the classical UNet
-        #num_epochs = 8
+        num_epochs = 8
         
         batch_size = 64 
         data_kwargs = dict(
@@ -50,10 +40,10 @@ def main():
         train_loader, test_loader = get_dataloaders(**data_kwargs)
         print("Data loaded")
 
-        # Define the UNet model and the training hyperparameters
-        p_dropout = 0.5
-        model = UNet_dropout(n_channels=1, n_classes=2, p_dropout=p_dropout).to(device)
-        #model = UNet(n_channels=1, n_classes=2).to(device)
+        # === Define the UNet and the training hyperparameters ===
+        #p_dropout = 0.5
+        #model = UNet_dropout(n_channels=1, n_classes=2, p_dropout=p_dropout).to(device)
+        model = UNet(n_channels=1, n_classes=2).to(device)
         model = model.double()
         optimizer_kwargs = dict(
         lr=3.998e-5,
@@ -69,12 +59,13 @@ def main():
         gamma = 0.1876
         criterion = FocalLoss(gamma=gamma)
 
-        # Train
+
+        # === Train ===
         final_train_acc, lr_history, train_loss_history, train_acc_history, train_soft_acc_history, train_f1_history = run_training(model, optimizer, scheduler, criterion, num_epochs, train_loader, device)
         print("Model trained!")
 
-        # Save the training outcomes
-        filename = str(num_epochs)+'_iters_'+str(batch_size)+'batch_'+str(gamma)+'gamma_dropout'
+        # === Save the training outcomes ===
+        filename = str(num_epochs)+'_iters_'+str(batch_size)+'batch_'+str(gamma)+'gamma_wo_dropout'
         file_path = f'UNet/Trials/{filename}.pkl'
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
@@ -86,7 +77,7 @@ def main():
         "train_soft_acc_history": train_soft_acc_history,
         "train_f1_history": train_f1_history,
         }
-   
+        # Save the training and validating data
         with open(file_path, 'wb') as fp: 
                 pickle.dump(data_tr_val, fp)
 
@@ -94,6 +85,16 @@ def main():
         file_path = f'UNet/Models/{filename}.pth'
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         torch.save(model.state_dict(), file_path) 
+
+
+        # === Training curves ===
+        n_train = len(train_acc_history)
+        t_train = num_epochs * np.arange(n_train) / n_train
+        t_val = np.arange(1, num_epochs + 1)
+
+        file_path = f'UNet/Plots/{filename}.png'
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
 
 if __name__ == '__main__':
         main()
