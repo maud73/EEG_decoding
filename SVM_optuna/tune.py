@@ -1,4 +1,5 @@
-from SVM import balance_weight, find_hyperparam
+from helpers import balance_weight
+from tune_functions import find_hyperparam
 from Data_processing import get_dataloaders, get_data, get_valset, get_optuna_dataloaders
 import torch
 from reproducibility import set_random_seeds
